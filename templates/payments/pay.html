@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Pay for order {{ order.number }} — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:560px">
+  <header class="page-header">
+    <h1>Complete payment</h1>
+    <p class="muted">Order {{ order.number }} · ${{ order.grand_total }} due</p>
+  </header>
+  <div class="panel" style="margin-bottom:4rem">
+    {% if payment.client_secret and publishable_key %}
+      <div id="card-element" data-client-secret="{{ payment.client_secret }}" data-key="{{ publishable_key }}"></div>
+      <p class="muted small">Card details are entered in a frame hosted by our payment provider and never reach this server.</p>
+      <button class="btn btn-primary btn-block" id="pay-button" type="button">Pay ${{ order.grand_total }}</button>
+    {% else %}
+      <h2 style="font-size:1.05rem">Awaiting invoice</h2>
+      <p class="muted small">
+        We review every livestock order by hand before charging it — that way a weather hold or a
+        combined box is sorted out before your money moves. Watch for an invoice at {{ order.email }}.
+      </p>
+      <a class="btn btn-ghost btn-block" href="{% url 'shop:order_detail' order.number %}">Back to my order</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

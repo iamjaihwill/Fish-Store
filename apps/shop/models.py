@@ -215,6 +215,30 @@ class Order(models.Model):
             )
         return self.grand_total
 
+    def mark_paid(self):
+        """Move a pending order to paid. Never downgrades a later status."""
+        if self.status != self.Status.PENDING:
+            return self
+        self.status = self.Status.PAID
+        self.save(update_fields=["status", "updated_at"])
+        return self
+
+    @property
+    def is_paid(self):
+        return self.status not in {self.Status.PENDING, self.Status.CANCELLED}
+
+    @property
+    def amount_outstanding(self):
+        from apps.payments.models import Payment
+
+        if self.is_paid:
+            return ZERO
+        settled = sum(
+            (p.amount for p in self.payments.filter(status=Payment.Status.PAID)),
+            start=ZERO,
+        )
+        return max(self.grand_total - settled, ZERO)
+
     def mark_shipped(self, carrier="", tracking_number=""):
         self.status = self.Status.SHIPPED
         self.carrier = carrier or self.carrier

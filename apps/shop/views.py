@@ -156,6 +156,19 @@ def checkout(request):
             send_order_confirmation(order)
             recent = request.session.get(ORDER_SESSION_KEY, [])
             request.session[ORDER_SESSION_KEY] = [order.number, *recent][:10]
+
+            from apps.payments.gateway import charge_order
+            from apps.payments.models import Payment
+
+            payment = charge_order(order)
+            if payment.status == Payment.Status.FAILED:
+                messages.error(
+                    request,
+                    f"We couldn't start the payment: {payment.error_message} "
+                    "Your order is saved — you can retry from the order page.",
+                )
+            elif payment.status == Payment.Status.REQUIRES_ACTION:
+                return redirect("payments:pay", number=order.number)
             return redirect("shop:order_confirmation", number=order.number)
     else:
         initial = {}

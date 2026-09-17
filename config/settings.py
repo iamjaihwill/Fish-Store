@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "apps.shop",
     "apps.reviews",
     "apps.rewards",
+    "apps.payments",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -138,6 +139,15 @@ if env("DJANGO_EMAIL_HOST"):
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = env("DJANGO_FROM_EMAIL", "orders@reefandrift.example")
+
+# Payments. The invoice backend needs no credentials and is how many coral
+# shops actually operate; set PAYMENT_BACKEND=stripe plus the keys below to
+# take cards.
+PAYMENT_BACKEND = env("DJANGO_PAYMENT_BACKEND", "invoice")
+STRIPE_SECRET_KEY = env("DJANGO_STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = env("DJANGO_STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET = env("DJANGO_STRIPE_WEBHOOK_SECRET", "")
+PAYMENT_BACKEND_CONFIG = {}
 
 # Storefront behaviour knobs that are not merchandising decisions (those live in
 # the CMS SiteSettings record so staff can change them without a deploy).
