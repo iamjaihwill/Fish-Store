@@ -441,3 +441,14 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(33, 230, 193
 .rating-choice ul { list-style: none; display: flex; gap: 1rem; padding: 0; margin: 0; flex-wrap: wrap; }
 .rating-choice label { display: flex; align-items: center; gap: .35rem; font-size: .9rem; cursor: pointer; }
 .rating-choice input { accent-color: var(--teal); }
+
+/* ---------- checkout credits ---------- */
+.credit-row { color: var(--teal); }
+.credit-box { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: .8rem; }
+.credit-box summary { cursor: pointer; font-size: .88rem; font-weight: 620; list-style: none; }
+.credit-box summary::-webkit-details-marker { display: none; }
+.credit-box summary::after { content: "+"; float: right; color: var(--teal); }
+.credit-box[open] summary::after { content: "–"; }
+.credit-body { padding-top: .8rem; display: grid; gap: .9rem; }
+.credit-row-form { display: flex; gap: .4rem; }
+.credit-row-form input { flex: 1; }

@@ -2,6 +2,7 @@
   <a href="{% url 'accounts:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="is-active"{% endif %}>Overview</a>
   <a href="{% url 'accounts:orders' %}" {% if request.resolver_match.url_name == 'orders' %}class="is-active"{% endif %}>Orders</a>
   <a href="{% url 'accounts:wishlist' %}" {% if request.resolver_match.url_name == 'wishlist' %}class="is-active"{% endif %}>Wishlist</a>
+  <a href="{% url 'accounts:rewards' %}" {% if request.resolver_match.url_name == 'rewards' %}class="is-active"{% endif %}>Rewards</a>
   <a href="{% url 'accounts:addresses' %}" {% if request.resolver_match.url_name == 'addresses' %}class="is-active"{% endif %}>Addresses</a>
   <a href="{% url 'accounts:profile' %}" {% if request.resolver_match.url_name == 'profile' %}class="is-active"{% endif %}>Profile</a>
   <a href="{% url 'accounts:wholesale' %}" {% if request.resolver_match.url_name == 'wholesale' %}class="is-active"{% endif %}>Wholesale</a>

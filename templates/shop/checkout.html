@@ -74,19 +74,80 @@
       </div>
       {% endfor %}
       <div class="summary-row" style="border-top:1px solid var(--line);margin-top:.5rem;padding-top:.7rem">
-        <span>Subtotal</span><span>${{ cart.subtotal }}</span>
+        <span>Subtotal</span><span>${{ totals.subtotal }}</span>
       </div>
+      {% if totals.discount_total %}
+      <div class="summary-row credit-row">
+        <span>Discount {% if credits.discount_code %}({{ credits.discount_code.code }}){% endif %}</span>
+        <span>−${{ totals.discount_total }}</span>
+      </div>
+      {% endif %}
       <div class="summary-row">
         <span>Shipping</span>
-        <span>{% if cart.shipping_total %}${{ cart.shipping_total }}{% else %}Free{% endif %}</span>
+        <span>{% if totals.shipping_total %}${{ totals.shipping_total }}{% else %}Free{% endif %}</span>
       </div>
-      {% if cart.tax_total %}<div class="summary-row"><span>Tax</span><span>${{ cart.tax_total }}</span></div>{% endif %}
-      <div class="summary-row summary-total"><span>Total</span><span>${{ cart.grand_total }}</span></div>
+      {% if totals.tax_total %}<div class="summary-row"><span>Tax</span><span>${{ totals.tax_total }}</span></div>{% endif %}
+      {% if totals.points_value %}
+      <div class="summary-row credit-row"><span>Reward points ({{ totals.points_redeemed }})</span><span>−${{ totals.points_value }}</span></div>
+      {% endif %}
+      {% if totals.gift_card_total %}
+      <div class="summary-row credit-row"><span>Gift card</span><span>−${{ totals.gift_card_total }}</span></div>
+      {% endif %}
+      <div class="summary-row summary-total"><span>Total</span><span>${{ totals.grand_total }}</span></div>
+      {% if totals.is_fully_covered %}<p class="small" style="color:var(--teal)">Covered in full by credits — nothing left to pay.</p>{% endif %}
       <button class="btn btn-primary btn-block" type="submit" style="margin-top:1rem">Place order</button>
+      <details class="credit-box">
+        <summary>Discount code, points or gift card</summary>
+        <div class="credit-body">
+          <div class="credit-field">
+            <label class="small muted">Discount code</label>
+            <div class="credit-row-form">
+              <input form="discount-form" type="text" name="code" value="{{ credits.discount_code.code|default:'' }}" placeholder="REEF10">
+              <button form="discount-form" class="btn btn-ghost small" type="submit">Apply</button>
+            </div>
+          </div>
+
+          {% if customer %}
+          <div class="credit-field">
+            <label class="small muted">Reward points ({{ points_balance }} available)</label>
+            {% if live_sale_running and not rewards.redeemable_during_sales %}
+              <p class="small muted">Points can't be spent during a live sale — you'll still earn them on this order.</p>
+            {% else %}
+            <div class="credit-row-form">
+              <input form="points-form" type="number" name="points" min="0" step="1"
+                     value="{{ credits.points|default:'' }}" placeholder="{{ rewards.minimum_redemption }}">
+              <button form="points-form" class="btn btn-ghost small" type="submit">Apply</button>
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <p class="small muted"><a href="{% url 'accounts:login' %}">Sign in</a> to spend reward points.</p>
+          {% endif %}
+
+          <div class="credit-field">
+            <label class="small muted">Gift card</label>
+            <div class="credit-row-form">
+              <input form="gift-form" type="text" name="code" placeholder="RR-XXXXXXXXXXXX">
+              <button form="gift-form" class="btn btn-ghost small" type="submit">Apply</button>
+            </div>
+            {% for card in credits.gift_cards %}
+            <div class="small muted" style="margin-top:.4rem">
+              {{ card.code }} — ${{ card.balance }} left
+              <button form="gift-form" class="linkish" type="submit" name="remove" value="{{ card.code }}">remove</button>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </details>
       <p class="small muted center" style="margin-top:.8rem">
         We invoice for payment after the order is reviewed — nothing is charged on this screen.
       </p>
     </aside>
   </form>
 </div>
+
+{# Credit forms live outside the checkout form: HTML cannot nest forms. #}
+<form id="discount-form" method="post" action="{% url 'shop:apply_discount' %}" hidden>{% csrf_token %}</form>
+<form id="points-form" method="post" action="{% url 'shop:apply_points' %}" hidden>{% csrf_token %}</form>
+<form id="gift-form" method="post" action="{% url 'shop:apply_gift_card' %}" hidden>{% csrf_token %}</form>
 {% endblock %}

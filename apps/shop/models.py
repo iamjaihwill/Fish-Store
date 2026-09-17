@@ -84,9 +84,22 @@ class Order(models.Model):
 
     # Money (snapshotted at checkout)
     subtotal = models.DecimalField(**MONEY, default=ZERO)
+    discount_total = models.DecimalField(**MONEY, default=ZERO)
     shipping_total = models.DecimalField(**MONEY, default=ZERO)
     tax_total = models.DecimalField(**MONEY, default=ZERO)
-    grand_total = models.DecimalField(**MONEY, default=ZERO)
+    points_redeemed = models.PositiveIntegerField(default=0)
+    points_value = models.DecimalField(**MONEY, default=ZERO)
+    gift_card_total = models.DecimalField(**MONEY, default=ZERO)
+    grand_total = models.DecimalField(
+        **MONEY, default=ZERO, help_text="Amount actually payable after credits."
+    )
+    discount_code = models.ForeignKey(
+        "rewards.DiscountCode",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="orders",
+    )
 
     # Fulfillment
     carrier = models.CharField(max_length=40, blank=True)
@@ -154,8 +167,17 @@ class Order(models.Model):
         closes = self.doa_window_closes_at
         return bool(closes and timezone.now() <= closes)
 
+    @property
+    def credits_applied(self):
+        return self.discount_total + self.points_value + self.gift_card_total
+
     def recalculate(self, *, save=True):
-        """Recompute money fields from the current line items."""
+        """Recompute money fields from the current line items.
+
+        Credits already recorded on the order (a discount code, redeemed points,
+        gift cards) are preserved and re-applied, so adding a line to an order
+        later cannot silently drop them.
+        """
         from apps.cms.models import SiteSettings
 
         settings_obj = SiteSettings.load()
@@ -167,9 +189,19 @@ class Order(models.Model):
             self.subtotal, self.contains_livestock, settings_obj
         )
         self.tax_total = (
-            self.subtotal * settings_obj.tax_rate_percent / Decimal("100")
+            (self.subtotal - self.discount_total)
+            * settings_obj.tax_rate_percent
+            / Decimal("100")
         ).quantize(Decimal("0.01"))
-        self.grand_total = self.subtotal + self.shipping_total + self.tax_total
+        payable = (
+            self.subtotal
+            - self.discount_total
+            + self.shipping_total
+            + self.tax_total
+            - self.points_value
+            - self.gift_card_total
+        )
+        self.grand_total = max(payable, ZERO).quantize(Decimal("0.01"))
         if save:
             self.save(
                 update_fields=[

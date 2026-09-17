@@ -3,12 +3,19 @@
 from decimal import Decimal
 
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import models, transaction
 from django.template.loader import render_to_string
 
 from apps.catalog.models import Product, ProductVariant
 from apps.cms.models import SiteSettings
+from apps.rewards.models import (
+    DiscountRedemption,
+    RewardsSettings,
+    award_points,
+    redeem_points,
+)
 from apps.shop.models import Order, OrderItem, quote_shipping
+from apps.shop.pricing import quote
 
 
 class OutOfStock(Exception):
@@ -23,7 +30,7 @@ class OutOfStock(Exception):
 
 
 @transaction.atomic
-def place_order(cart, details, customer=None):
+def place_order(cart, details, customer=None, credits=None):
     """Create an order from ``cart``.
 
     Inventory is locked and decremented inside the transaction, so two people
@@ -95,16 +102,57 @@ def place_order(cart, details, customer=None):
         subtotal += unit_price * line.quantity
         contains_livestock = contains_livestock or product.is_livestock
 
-    order.subtotal = subtotal.quantize(Decimal("0.01"))
+    # Price the order through the single pricing function, then consume the
+    # credits it actually used -- never more than that.
+    discount_code = credits.discount_code if credits else None
+    totals = quote(
+        subtotal,
+        contains_livestock=contains_livestock,
+        discount_code=discount_code,
+        points=credits.points if credits else 0,
+        gift_cards=credits.gift_cards if credits else (),
+        customer=customer,
+        site=settings_obj,
+    )
+
+    order.subtotal = totals.subtotal
     order.contains_livestock = contains_livestock
-    order.shipping_total = quote_shipping(order.subtotal, contains_livestock, settings_obj)
-    order.tax_total = (
-        order.subtotal * settings_obj.tax_rate_percent / Decimal("100")
-    ).quantize(Decimal("0.01"))
-    order.grand_total = order.subtotal + order.shipping_total + order.tax_total
+    order.discount_total = totals.discount_total
+    order.shipping_total = totals.shipping_total
+    order.tax_total = totals.tax_total
+    order.points_redeemed = totals.points_redeemed
+    order.points_value = totals.points_value
+    order.gift_card_total = totals.gift_card_total
+    order.grand_total = totals.grand_total
+    order.discount_code = discount_code if totals.discount_total or (
+        discount_code and discount_code.kind == discount_code.Kind.FREE_SHIPPING
+    ) else None
     order.save()
 
+    if order.discount_code is not None:
+        DiscountRedemption.objects.create(
+            code=order.discount_code,
+            customer=customer,
+            order=order,
+            email=order.email,
+            amount=totals.discount_total,
+        )
+        type(order.discount_code).objects.filter(pk=order.discount_code.pk).update(
+            times_used=models.F("times_used") + 1
+        )
+
+    if totals.points_redeemed:
+        redeem_points(customer, totals.points_redeemed, order=order)
+
+    for card, amount in totals.gift_card_allocations:
+        card.redeem(amount, order=order)
+
+    # Points are earned on what the customer actually spent on merchandise.
+    award_points(customer, order, settings_obj=RewardsSettings.load())
+
     cart.clear()
+    if credits is not None:
+        credits.clear()
     return order
 
 

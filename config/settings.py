@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "apps.cms",
     "apps.shop",
     "apps.reviews",
+    "apps.rewards",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

@@ -185,6 +185,27 @@ def wishlist_add_all_to_cart(request):
 
 
 @login_required
+def rewards(request):
+    from apps.rewards.models import PointsTransaction, RewardsSettings, balance_for
+
+    customer = get_customer(request)
+    settings_obj = RewardsSettings.load()
+    balance = balance_for(customer)
+    return render(
+        request,
+        "accounts/rewards.html",
+        {
+            "customer": customer,
+            "balance": balance,
+            "balance_value": settings_obj.value_of(balance),
+            "rewards": settings_obj,
+            "history": PointsTransaction.objects.filter(customer=customer)[:30],
+            "gift_cards": customer.gift_cards.filter(is_active=True),
+        },
+    )
+
+
+@login_required
 def wholesale(request):
     customer = get_customer(request)
     if request.method == "POST":

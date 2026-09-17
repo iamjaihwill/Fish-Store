@@ -11,6 +11,8 @@ from apps.catalog.models import Product, ProductVariant
 from apps.shop.cart import Cart
 from apps.shop.forms import CheckoutForm, DoaClaimForm, OrderLookupForm
 from apps.shop.models import Order
+from apps.rewards.checkout import AppliedCredits
+from apps.shop.pricing import quote
 from apps.shop.services import OutOfStock, place_order, send_order_confirmation
 
 ORDER_SESSION_KEY = "recent_orders"
@@ -125,11 +127,24 @@ def checkout(request):
 
         customer = get_customer(request)
 
+    credits = AppliedCredits(request)
+    live_sale_running = _live_sale_running()
+    totals = quote(
+        cart.subtotal,
+        contains_livestock=cart.contains_livestock,
+        discount_code=credits.discount_code,
+        points=credits.points,
+        gift_cards=credits.gift_cards,
+        customer=customer,
+    )
+
     if request.method == "POST":
         form = CheckoutForm(request.POST, requires_livestock_terms=requires_terms)
         if form.is_valid():
             try:
-                order = place_order(cart, form.cleaned_data, customer=customer)
+                order = place_order(
+                    cart, form.cleaned_data, customer=customer, credits=credits
+                )
             except OutOfStock as exc:
                 messages.error(
                     request,
@@ -155,6 +170,8 @@ def checkout(request):
                 initial["phone"] = customer.phone
         form = CheckoutForm(initial=initial, requires_livestock_terms=requires_terms)
 
+    from apps.rewards.models import RewardsSettings, balance_for
+
     return render(
         request,
         "shop/checkout.html",
@@ -163,6 +180,11 @@ def checkout(request):
             "form": form,
             "requires_terms": requires_terms,
             "customer": customer,
+            "totals": totals,
+            "credits": credits,
+            "points_balance": balance_for(customer),
+            "rewards": RewardsSettings.load(),
+            "live_sale_running": live_sale_running,
         },
     )
 
@@ -222,3 +244,72 @@ def doa_claim(request, number):
         "shop/doa_claim.html",
         {"order": order, "form": form, "now": timezone.now()},
     )
+
+
+def _live_sale_running():
+    """Is a live or flash sale on right now? Points cannot be spent during one."""
+    from apps.cms.models import LiveSaleEvent
+
+    return any(event.is_running for event in LiveSaleEvent.objects.filter(is_active=True))
+
+
+@require_POST
+def apply_discount(request):
+    cart = Cart(request)
+    credits = AppliedCredits(request)
+    customer = None
+    if request.user.is_authenticated:
+        from apps.accounts.views import get_customer
+
+        customer = get_customer(request)
+
+    code = request.POST.get("code", "")
+    if not code.strip():
+        credits.clear_discount()
+        messages.info(request, "Discount code removed.")
+    else:
+        ok, message = credits.apply_discount(code, cart.subtotal, customer=customer)
+        (messages.success if ok else messages.error)(request, message)
+    return redirect("shop:checkout")
+
+
+@require_POST
+def apply_points(request):
+    credits = AppliedCredits(request)
+    customer = None
+    if request.user.is_authenticated:
+        from apps.accounts.views import get_customer
+
+        customer = get_customer(request)
+
+    raw = request.POST.get("points", "").strip()
+    if not raw:
+        credits.clear_points()
+        messages.info(request, "Reward points removed.")
+        return redirect("shop:checkout")
+
+    try:
+        points = int(raw)
+    except ValueError:
+        messages.error(request, "Enter a whole number of points.")
+        return redirect("shop:checkout")
+
+    ok, message = credits.apply_points(
+        points, customer, live_sale_running=_live_sale_running()
+    )
+    (messages.success if ok else messages.error)(request, message)
+    return redirect("shop:checkout")
+
+
+@require_POST
+def apply_gift_card(request):
+    credits = AppliedCredits(request)
+    code = request.POST.get("code", "")
+    remove = request.POST.get("remove")
+    if remove:
+        credits.remove_gift_card(remove)
+        messages.info(request, "Gift card removed.")
+    else:
+        ok, message = credits.apply_gift_card(code)
+        (messages.success if ok else messages.error)(request, message)
+    return redirect("shop:checkout")

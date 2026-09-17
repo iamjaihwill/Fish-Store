@@ -40,5 +40,6 @@ urlpatterns = [
     path("wishlist/", views.wishlist, name="wishlist"),
     path("wishlist/toggle/<slug:slug>/", views.wishlist_toggle, name="wishlist_toggle"),
     path("wishlist/add-all/", views.wishlist_add_all_to_cart, name="wishlist_add_all"),
+    path("rewards/", views.rewards, name="rewards"),
     path("wholesale/", views.wholesale, name="wholesale"),
 ]

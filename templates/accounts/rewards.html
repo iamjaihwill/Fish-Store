@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Rewards — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header"><h1>Rewards</h1>{% include "accounts/_nav.html" %}</header>
+  <div class="account-grid" style="margin-bottom:4rem">
+    <section class="panel">
+      <h2 style="font-size:1.05rem">Points history</h2>
+      {% for row in history %}
+      <div class="summary-row small">
+        <span>{{ row.created_at|date:"M j, Y" }} · {{ row.get_kind_display }}{% if row.note %} — {{ row.note }}{% endif %}</span>
+        <span>{% if row.points %}{{ row.points|stringformat:"+d" }}{% else %}—{% endif %}</span>
+      </div>
+      {% empty %}
+      <p class="muted small">No points yet. You'll earn {{ rewards.points_per_dollar|floatformat:0 }} point per $1 on your next order.</p>
+      {% endfor %}
+    </section>
+    <aside class="summary">
+      <h2 style="font-size:1.05rem">Balance</h2>
+      <p style="font-size:2rem;font-weight:750;margin:.2rem 0">{{ balance }}</p>
+      <p class="muted small">worth ${{ balance_value }} at checkout</p>
+      <div class="summary-row"><span>Earn rate</span><span>{{ rewards.points_per_dollar|floatformat:0 }} / $1</span></div>
+      <div class="summary-row"><span>Minimum redemption</span><span>{{ rewards.minimum_redemption }}</span></div>
+      {% if rewards.expiry_days %}<div class="summary-row"><span>Points expire</span><span>{{ rewards.expiry_days }} days</span></div>{% endif %}
+      {% if not rewards.redeemable_during_sales %}
+      <p class="muted small" style="margin-top:.8rem">Points can't be spent during live sales, but you still earn them.</p>
+      {% endif %}
+      {% if gift_cards %}
+      <h3 style="margin-top:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Gift cards</h3>
+      {% for card in gift_cards %}
+      <div class="summary-row"><span>{{ card.code }}</span><span>${{ card.balance }}</span></div>
+      {% endfor %}
+      {% endif %}
+    </aside>
+  </div>
+</div>
+{% endblock %}
