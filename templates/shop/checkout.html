@@ -42,6 +42,10 @@
           We ship livestock overnight {{ site.shipping_days }}. Someone must be present to receive the box —
           a coral left on a porch is a coral we cannot guarantee.
         </p>
+        <p class="small" style="color:var(--teal)">
+          Order before {{ site.shipping_cutoff_time|time:"g:i a" }} and the next box out is
+          {{ next_ship_date|date:"l, F j" }}.
+        </p>
         <div class="form-grid">
           <div class="field">
             {{ form.requested_ship_date.label_tag }}{{ form.requested_ship_date }}

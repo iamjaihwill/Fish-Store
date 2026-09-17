@@ -452,3 +452,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(33, 230, 193
 .credit-body { padding-top: .8rem; display: grid; gap: .9rem; }
 .credit-row-form { display: flex; gap: .4rem; }
 .credit-row-form input { flex: 1; }
+
+/* ---------- add to existing order ---------- */
+.order-choice {
+  display: flex; gap: .75rem; align-items: flex-start; padding: .85rem;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  margin-bottom: .6rem; cursor: pointer; background: var(--surface);
+}
+.order-choice:hover { border-color: var(--teal); }
+.order-choice input { accent-color: var(--teal); margin-top: .25rem; }

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Add to an existing order — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:720px">
+  <header class="page-header">
+    <h1>Add to an existing order</h1>
+    <p class="muted">
+      Won more than one coral tonight? Put them in a box you've already paid shipping on —
+      everything travels together on your chosen delivery date.
+    </p>
+  </header>
+
+  {% if orders %}
+  <form method="post" class="panel" style="margin-bottom:4rem">
+    {% csrf_token %}
+    <h2 style="font-size:1.05rem">Choose an order</h2>
+    {% for order in orders %}
+    <label class="order-choice">
+      <input type="radio" name="order" value="{{ order.number }}" {% if forloop.first %}checked{% endif %}>
+      <span>
+        <strong>{{ order.number }}</strong> · {{ order.created_at|date:"M j" }} · {{ order.get_status_display }}<br>
+        <span class="muted small">
+          {{ order.item_count }} item{{ order.item_count|pluralize }} · ${{ order.grand_total }}
+          {% if order.requested_ship_date %} · ships {{ order.requested_ship_date|date:"M j" }}{% endif %}
+        </span>
+      </span>
+    </label>
+    {% endfor %}
+
+    <h3 style="margin-top:1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Adding</h3>
+    {% for line in cart %}
+    <div class="summary-row small"><span>{{ line.quantity }} × {{ line.label }}</span><span>${{ line.line_total }}</span></div>
+    {% endfor %}
+    <p class="muted small" style="margin-top:.75rem">You won't be charged livestock shipping a second time.</p>
+    <button class="btn btn-primary btn-block" type="submit" style="margin-top:1rem">Add to this order</button>
+  </form>
+  {% else %}
+  <div class="empty-state" style="margin-bottom:4rem">
+    <h2>No open orders</h2>
+    <p class="muted">Once you have an order that hasn't shipped, later wins can join it here.</p>
+    <a class="btn btn-primary" href="{% url 'shop:checkout' %}">Check out normally</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

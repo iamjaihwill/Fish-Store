@@ -64,6 +64,10 @@
       <p class="small" style="color:var(--teal)">Free shipping unlocked.</p>
       {% endif %}
 
+      {% if cart.wholesale_savings %}
+      <div class="summary-row"><span>Retail</span><span class="price-was">${{ cart.retail_subtotal }}</span></div>
+      <div class="summary-row credit-row"><span>Wholesale pricing</span><span>−${{ cart.wholesale_savings }}</span></div>
+      {% endif %}
       <div class="summary-row"><span>Subtotal</span><span>${{ cart.subtotal }}</span></div>
       <div class="summary-row">
         <span>Shipping{% if cart.contains_livestock %} (overnight){% endif %}</span>
@@ -76,6 +80,12 @@
       <p class="flash flash-warning small" style="margin:1rem 0 0">Some items exceed available stock. Adjust them to check out.</p>
       {% else %}
       <a class="btn btn-primary btn-block" href="{% url 'shop:checkout' %}" style="margin-top:1rem">Checkout</a>
+      {% if open_orders %}
+      <a class="btn btn-ghost btn-block" href="{% url 'shop:add_to_existing' %}" style="margin-top:.6rem">
+        Add to order {{ open_orders.0.number }} instead
+      </a>
+      <p class="small muted center" style="margin:.5rem 0 0">Skip a second shipping charge.</p>
+      {% endif %}
       {% endif %}
       <p class="center small muted" style="margin:.8rem 0 0"><a href="{% url 'catalog:shop' %}">Keep shopping</a></p>
 

@@ -57,9 +57,21 @@ class CheckoutForm(forms.Form):
             self.fields["accepts_livestock_terms"].required = True
 
     def clean_requested_ship_date(self):
+        """Keep requested dates on days we actually ship livestock."""
+        from apps.cms.models import SiteSettings
+
         value = self.cleaned_data.get("requested_ship_date")
-        if value and value < timezone.localdate():
+        if not value:
+            return value
+        if value < timezone.localdate():
             raise forms.ValidationError("Pick a date that has not already passed.")
+
+        site = SiteSettings.load()
+        if self.requires_livestock_terms and value.weekday() not in site.shipping_weekday_numbers:
+            raise forms.ValidationError(
+                f"We only ship livestock on {site.shipping_days}. "
+                f"The next available day is {site.next_ship_date():%A, %B %-d}."
+            )
         return value
 
 

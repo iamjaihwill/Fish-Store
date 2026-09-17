@@ -80,6 +80,13 @@ def place_order(cart, details, customer=None, credits=None):
                 raise OutOfStock(product, product.max_orderable)
             unit_price = product.price
 
+        # Approved wholesale accounts buy at trade pricing.
+        if customer is not None and customer.is_wholesale:
+            from apps.cms.models import SiteSettings as _Site
+
+            rate = _Site.load().wholesale_discount_percent / Decimal("100")
+            unit_price = (unit_price * (Decimal("1") - rate)).quantize(Decimal("0.01"))
+
         OrderItem.objects.create(
             order=order,
             product=product,

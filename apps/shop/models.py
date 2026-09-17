@@ -152,6 +152,19 @@ class Order(models.Model):
         return lines
 
     @property
+    def accepts_additions(self):
+        """Can more livestock join this box before it ships?
+
+        This is the live sale workflow: a customer wins several corals across an
+        evening, pays livestock shipping once, and everything travels together.
+        """
+        from apps.cms.models import SiteSettings
+
+        if not SiteSettings.load().allow_order_additions:
+            return False
+        return self.status in {self.Status.PENDING, self.Status.PAID, self.Status.PACKING}
+
+    @property
     def is_cancellable(self):
         return self.status in {self.Status.PENDING, self.Status.PAID}
 

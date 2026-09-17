@@ -36,6 +36,8 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                     ("free_shipping_threshold", "tax_rate_percent"),
                     ("livestock_shipping_rate", "drygoods_shipping_rate"),
                     "shipping_days",
+                    ("shipping_weekdays", "shipping_cutoff_time"),
+                    ("wholesale_discount_percent", "allow_order_additions"),
                     ("guarantee_headline", "guarantee_blurb"),
                 )
             },

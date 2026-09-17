@@ -63,6 +63,27 @@ class Cart:
     def __init__(self, request):
         self.session = request.session
         self._items = self.session.setdefault(settings.CART_SESSION_KEY, {})
+        self.customer = getattr(request, "_cart_customer", None)
+        if self.customer is None and getattr(request, "user", None) is not None:
+            if request.user.is_authenticated:
+                from apps.accounts.models import Customer
+
+                self.customer = Customer.objects.filter(user=request.user).first()
+                request._cart_customer = self.customer
+
+    @property
+    def wholesale_discount(self):
+        """Fraction off merchandise for an approved wholesale account."""
+        if self.customer is None or not self.customer.is_wholesale:
+            return Decimal("0")
+        return SiteSettings.load().wholesale_discount_percent / Decimal("100")
+
+    def price_for(self, line):
+        """Unit price after any wholesale discount."""
+        discount = self.wholesale_discount
+        if not discount:
+            return line.unit_price
+        return (line.unit_price * (Decimal("1") - discount)).quantize(Decimal("0.01"))
 
     # --- mutation --------------------------------------------------------
     def add(self, product, quantity=1, *, variant=None, replace=False):
@@ -152,7 +173,24 @@ class Cart:
 
     @property
     def subtotal(self):
+        discount = self.wholesale_discount
+        if not discount:
+            return sum((line.line_total for line in self.lines), start=ZERO)
+        return sum(
+            (
+                (self.price_for(line) * line.quantity).quantize(Decimal("0.01"))
+                for line in self.lines
+            ),
+            start=ZERO,
+        )
+
+    @property
+    def retail_subtotal(self):
         return sum((line.line_total for line in self.lines), start=ZERO)
+
+    @property
+    def wholesale_savings(self):
+        return self.retail_subtotal - self.subtotal
 
     @property
     def contains_livestock(self):

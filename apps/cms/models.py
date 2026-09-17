@@ -79,6 +79,25 @@ class SiteSettings(SingletonModel):
         default="Monday, Tuesday and Wednesday",
         help_text="Days livestock leaves the facility.",
     )
+    shipping_cutoff_time = models.TimeField(
+        default="14:00",
+        help_text="Orders placed before this local time ship the same business day.",
+    )
+    shipping_weekdays = models.CharField(
+        max_length=20,
+        default="0,1,2",
+        help_text="Weekday numbers livestock ships on (Monday=0). e.g. 0,1,2",
+    )
+    wholesale_discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=30,
+        help_text="Percentage off merchandise for approved wholesale accounts.",
+    )
+    allow_order_additions = models.BooleanField(
+        default=True,
+        help_text="Let customers add live sale wins to an unshipped order without paying shipping twice.",
+    )
     guarantee_headline = models.CharField(
         max_length=120, default="Live Arrival Guarantee"
     )
@@ -104,6 +123,31 @@ class SiteSettings(SingletonModel):
 
     def __str__(self):
         return self.store_name
+
+    @property
+    def shipping_weekday_numbers(self):
+        numbers = []
+        for piece in self.shipping_weekdays.split(","):
+            piece = piece.strip()
+            if piece.isdigit() and 0 <= int(piece) <= 6:
+                numbers.append(int(piece))
+        return sorted(set(numbers)) or [0, 1, 2]
+
+    def next_ship_date(self, now=None):
+        """The next day livestock can leave, honouring the same-day cutoff."""
+        from django.utils import timezone as tz
+
+        now = now or tz.localtime()
+        ship_days = self.shipping_weekday_numbers
+        candidate = now.date()
+        # Past the cutoff, today is no longer on the table.
+        if now.time() >= self.shipping_cutoff_time:
+            candidate += tz.timedelta(days=1)
+        for _ in range(14):
+            if candidate.weekday() in ship_days:
+                return candidate
+            candidate += tz.timedelta(days=1)
+        return candidate
 
     @property
     def social_links(self):

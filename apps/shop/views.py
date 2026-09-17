@@ -12,6 +12,7 @@ from apps.shop.cart import Cart
 from apps.shop.forms import CheckoutForm, DoaClaimForm, OrderLookupForm
 from apps.shop.models import Order
 from apps.rewards.checkout import AppliedCredits
+from apps.shop.additions import CannotAddToOrder, add_to_order, open_orders_for
 from apps.shop.pricing import quote
 from apps.shop.services import OutOfStock, place_order, send_order_confirmation
 
@@ -100,7 +101,15 @@ def remove_from_cart(request, slug):
 
 def cart_detail(request):
     cart = Cart(request)
-    return render(request, "shop/cart.html", {"cart": cart, "problems": cart.problems()})
+    return render(
+        request,
+        "shop/cart.html",
+        {
+            "cart": cart,
+            "problems": cart.problems(),
+            "open_orders": open_orders_for(request, _current_customer(request)),
+        },
+    )
 
 
 def checkout(request):
@@ -183,8 +192,10 @@ def checkout(request):
                 initial["phone"] = customer.phone
         form = CheckoutForm(initial=initial, requires_livestock_terms=requires_terms)
 
+    from apps.cms.models import SiteSettings
     from apps.rewards.models import RewardsSettings, balance_for
 
+    site_settings = SiteSettings.load()
     return render(
         request,
         "shop/checkout.html",
@@ -195,6 +206,7 @@ def checkout(request):
             "customer": customer,
             "totals": totals,
             "credits": credits,
+            "next_ship_date": site_settings.next_ship_date(),
             "points_balance": balance_for(customer),
             "rewards": RewardsSettings.load(),
             "live_sale_running": live_sale_running,
@@ -326,3 +338,46 @@ def apply_gift_card(request):
         ok, message = credits.apply_gift_card(code)
         (messages.success if ok else messages.error)(request, message)
     return redirect("shop:checkout")
+
+
+def _current_customer(request):
+    if not request.user.is_authenticated:
+        return None
+    from apps.accounts.views import get_customer
+
+    return get_customer(request)
+
+
+def add_to_existing_order(request):
+    """Live sale flow: put this cart into a box that has not shipped yet."""
+    cart = Cart(request)
+    customer = _current_customer(request)
+    orders = open_orders_for(request, customer)
+
+    if request.method == "POST":
+        number = request.POST.get("order")
+        order = next((o for o in orders if o.number == number), None)
+        if order is None:
+            messages.error(request, "We couldn't find that open order.")
+            return redirect("shop:add_to_existing")
+        try:
+            added = add_to_order(order, cart)
+        except OutOfStock as exc:
+            messages.error(request, f"{exc.product.name} sold out before we could add it.")
+            return redirect("shop:cart")
+        except CannotAddToOrder as exc:
+            messages.error(request, str(exc))
+            return redirect("shop:cart")
+
+        messages.success(
+            request,
+            f"Added {len(added)} item{'s' if len(added) != 1 else ''} to order "
+            f"{order.number} — no second shipping charge.",
+        )
+        return redirect("shop:order_detail", number=order.number)
+
+    return render(
+        request,
+        "shop/add_to_order.html",
+        {"cart": cart, "orders": orders},
+    )
