@@ -68,3 +68,67 @@
     var timer = setInterval(tick, 1000);
   });
 })();
+
+/* Instant search suggestions. The form still submits normally without JS. */
+(function () {
+  "use strict";
+  var form = document.querySelector(".search[data-suggest-url]");
+  if (!form) return;
+  var input = form.querySelector('input[type="search"]');
+  var box = form.querySelector(".suggest");
+  if (!input || !box) return;
+
+  var timer = null;
+  var lastQuery = "";
+
+  function hide() {
+    box.hidden = true;
+    box.innerHTML = "";
+  }
+
+  function render(results) {
+    if (!results.length) return hide();
+    box.innerHTML = results
+      .map(function (item) {
+        var badge = item.sold_out
+          ? '<span class="suggest-tag">Sold out</span>'
+          : item.wysiwyg
+          ? '<span class="suggest-tag">WYSIWYG</span>'
+          : "";
+        var image = item.image
+          ? '<img src="' + item.image + '" alt="" loading="lazy">'
+          : '<span class="suggest-blank"></span>';
+        return (
+          '<a class="suggest-item" role="option" href="' + item.url + '">' +
+          image +
+          '<span class="suggest-name">' + item.name + badge + "</span>" +
+          '<span class="suggest-price">$' + item.price + "</span></a>"
+        );
+      })
+      .join("");
+    box.hidden = false;
+  }
+
+  input.addEventListener("input", function () {
+    var query = input.value.trim();
+    window.clearTimeout(timer);
+    if (query.length < 2) return hide();
+    timer = window.setTimeout(function () {
+      if (query === lastQuery) return;
+      lastQuery = query;
+      fetch(form.dataset.suggestUrl + "?q=" + encodeURIComponent(query), {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) { render(data.results || []); })
+        .catch(hide);
+    }, 180);
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!form.contains(event.target)) hide();
+  });
+  input.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") hide();
+  });
+})();

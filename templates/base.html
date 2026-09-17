@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ site.store_name }}{% endblock %}</title>
 <meta name="description" content="{% block meta_description %}{{ site.tagline }}{% endblock %}">
+<link rel="canonical" href="{{ request.build_absolute_uri }}">
+
+{# Open Graph / Twitter: coral listings get shared into forums and group chats. #}
+<meta property="og:site_name" content="{{ site.store_name }}">
+<meta property="og:type" content="{% block og_type %}website{% endblock %}">
+<meta property="og:title" content="{% block og_title %}{{ site.store_name }}{% endblock %}">
+<meta property="og:description" content="{% block og_description %}{{ site.tagline }}{% endblock %}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+{% block og_image %}{% if site.logo %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ site.logo.url }}">{% endif %}{% endblock %}
+<meta name="twitter:card" content="summary_large_image">
+{% block structured_data %}{% endblock %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="{% static 'css/site.css' %}">
 <link rel="icon" href="{% static 'img/favicon.svg' %}">
@@ -18,5 +29,6 @@
 </main>
 {% include "partials/footer.html" %}
 <script src="{% static 'js/site.js' %}" defer></script>
+{% include "partials/analytics.html" %}
 </body>
 </html>

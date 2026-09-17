@@ -8,8 +8,10 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
+from django.utils.text import slugify
 
 from apps.catalog.models import (
+    BundleItem,
     CareLevel,
     Category,
     Collection,
@@ -21,10 +23,15 @@ from apps.catalog.models import (
     ProductImage,
     ProductType,
     ReefSafe,
+    ProductVariant,
+    ProductVideo,
     Tag,
     Temperament,
 )
+from apps.rewards.models import DiscountCode, GiftCard, RewardsSettings
+from apps.reviews.models import Review
 from apps.cms.models import (
+    Article,
     FaqItem,
     HeroSlide,
     HomepageSection,
@@ -165,7 +172,9 @@ class Command(BaseCommand):
         if options["flush"]:
             self.stdout.write("Clearing existing catalog and content...")
             for model in (
+                Review, BundleItem, ProductVariant, ProductVideo,
                 CollectionItem, ProductImage, Product, Collection, Category, Tag,
+                Article,
                 HeroSlide, HomepageSection, Page, FaqItem, NavigationLink,
                 LiveSaleEvent, Testimonial,
             ):
@@ -173,8 +182,13 @@ class Command(BaseCommand):
 
         categories = self.seed_categories()
         products = self.seed_products(categories)
+        self.seed_variants(products)
+        self.seed_bundles(categories, products)
+        self.seed_reviews(products)
+        self.seed_rewards()
         self.seed_collections(products)
         self.seed_content()
+        self.seed_articles()
         self.seed_admin(options["admin_password"])
 
         self.stdout.write(self.style.SUCCESS(
@@ -369,6 +383,187 @@ class Command(BaseCommand):
         getattr(obj, field).save(
             f"{seed}.jpg", generate_image(seed, palette, size=size, style=style), save=True
         )
+
+    def seed_variants(self, products):
+        """Give a few corals frag/colony options and a pack-size dry good."""
+        specs = {
+            "Bioluminescent Hammer": [
+                ("Single head", "275.00", 4, True),
+                ("Three head colony", "740.00", 1, False),
+            ],
+            "Nebula Zoa Garden": [
+                ("5 polyp frag", "85.00", 6, True),
+                ("15+ polyp colony", "210.00", 2, False),
+            ],
+            "Reef Crystals Salt — 200gal": [
+                ("50 gallon box", "34.00", 20, True),
+                ("200 gallon box", "89.00", 9, False),
+            ],
+        }
+        by_name = {p.name: p for p in products}
+        for name, options in specs.items():
+            product = by_name.get(name)
+            if product is None or product.variants.exists():
+                continue
+            for order, (label, price, stock, is_default) in enumerate(options):
+                ProductVariant.objects.create(
+                    product=product, name=label, price=Decimal(price),
+                    stock_quantity=stock, is_default=is_default, sort_order=order,
+                )
+
+        # A video on the headline WYSIWYG piece.
+        torch = by_name.get("Midnight Torch")
+        if torch and not torch.videos.exists():
+            ProductVideo.objects.create(
+                product=torch,
+                title="Midnight Torch under 20k blues",
+                url="https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            )
+
+    def seed_bundles(self, categories, products):
+        by_name = {p.name: p for p in products}
+        pack, created = Product.objects.get_or_create(
+            name="Beginner Four Pack",
+            defaults={
+                "category": categories["Corals"],
+                "product_type": ProductType.BUNDLE,
+                "price": Decimal("199.00"),
+                "compare_at_price": Decimal("265.00"),
+                "description": "Four forgiving corals chosen to survive a young tank: "
+                               "a zoa garden, a leather, a favia and a mushroom.",
+                "tagline": "Four beginner corals, one box, one shipping charge.",
+                "status": Product.Status.ACTIVE,
+                "stock_quantity": 8,
+                "bundle_size": 4,
+                "is_featured": True,
+            },
+        )
+        if created:
+            self.attach_product_images(pack, "zoa", count=1)
+            for order, name in enumerate(
+                ["Nebula Zoa Garden", "Deep Current Leather", "Ember Ridge Favia", "Ghost Anemone Frag"]
+            ):
+                item = by_name.get(name)
+                if item:
+                    BundleItem.objects.get_or_create(
+                        bundle=pack, product=item, defaults={"sort_order": order}
+                    )
+
+        mystery, created = Product.objects.get_or_create(
+            name="Mystery Coral Box",
+            defaults={
+                "category": categories["Corals"],
+                "product_type": ProductType.BUNDLE,
+                "price": Decimal("249.00"),
+                "description": "Five named corals picked on packing day from whatever is "
+                               "colouring up best. Always worth more than the box price.",
+                "tagline": "Five pieces, our choice, never a dud.",
+                "status": Product.Status.ACTIVE,
+                "stock_quantity": 12,
+                "is_mystery": True,
+                "bundle_size": 5,
+            },
+        )
+        if created:
+            self.attach_product_images(mystery, "chalice", count=1)
+
+    def seed_reviews(self, products):
+        samples = [
+            ("Midnight Torch", 5, "Arrived fully extended",
+             "Overnight in January and it opened within an hour of acclimation. "
+             "The heat pack placement tells you these people keep reefs themselves.",
+             "Dana R.", True),
+            ("Midnight Torch", 4, "Beautiful, slow to settle",
+             "Took about ten days to fully extend, which is normal. Colour matches "
+             "the listing photo exactly.", "Marcus T.", True),
+            ("Rift Fire Acan Lord", 5, "Photo was honest",
+             "What showed up was the coral in the picture, same size, same colour, "
+             "no wide-angle lens tricks.", "Priya S.", True),
+            ("Yellow Tang", 5, "Eating from day one",
+             "Went straight for the nori. Clearly quarantined properly.",
+             "Chris M.", False),
+        ]
+        by_name = {p.name: p for p in products}
+        for name, rating, title, body, author, verified in samples:
+            product = by_name.get(name)
+            if product is None:
+                continue
+            Review.objects.get_or_create(
+                product=product, author_name=author,
+                defaults={
+                    "rating": rating, "title": title, "body": body,
+                    "author_email": f"{slugify(author)}@example.com",
+                    "is_verified_purchase": verified,
+                    "status": Review.Status.APPROVED,
+                    "published_at": timezone.now(),
+                },
+            )
+
+    def seed_rewards(self):
+        RewardsSettings.load()
+        DiscountCode.objects.get_or_create(
+            code="REEF10",
+            defaults={
+                "kind": DiscountCode.Kind.PERCENT,
+                "value": Decimal("10.00"),
+                "description": "10% off your first order.",
+                "max_uses_per_customer": 1,
+            },
+        )
+        DiscountCode.objects.get_or_create(
+            code="FREESHIP299",
+            defaults={
+                "kind": DiscountCode.Kind.FREE_SHIPPING,
+                "description": "Free overnight shipping.",
+                "minimum_subtotal": Decimal("299.00"),
+            },
+        )
+        if not GiftCard.objects.exists():
+            GiftCard.objects.create(
+                initial_balance=Decimal("100.00"),
+                message="Demo gift card — try it at checkout.",
+            )
+
+    def seed_articles(self):
+        articles = [
+            ("Why your new coral is closed up (and why that's fine)", Article.Category.CARE,
+             "Shipping stress looks alarming and almost never is.",
+             "<p>A coral that travelled overnight has spent eighteen hours in the dark in a bag "
+             "of its own waste. Staying retracted for two or three days afterwards is the normal "
+             "response, not a warning sign.</p>"
+             "<h2>What to do</h2><ul>"
+             "<li>Dim the lights for the first 48 hours.</li>"
+             "<li>Put it low, in moderate flow, and leave it there.</li>"
+             "<li>Do not feed it, do not dip it twice, do not keep moving it.</li></ul>"
+             "<p>Judge a new coral after a week. Most of the losses we see are from people "
+             "intervening on day two.</p>"),
+            ("Drip acclimation, step by step", Article.Category.HOWTO,
+             "Fifteen minutes of patience saves a $300 colony.",
+             "<p>Shipping water is ammonia-heavy by the time it lands. Acclimation is about "
+             "matching pH and salinity, not about keeping that water.</p>"
+             "<h2>The method</h2><ol>"
+             "<li>Float the sealed bag for 15 minutes.</li>"
+             "<li>Open it into a clean container and drip at 2–3 drops per second.</li>"
+             "<li>After 45 minutes, net the animal across. Discard the shipping water.</li></ol>"),
+            ("Torch corals: the honest care guide", Article.Category.SPECIES,
+             "Euphyllia are forgiving until they aren't.",
+             "<p>Torches want moderate light, moderate flow, and to be left alone. The two "
+             "things that kill them are aggressive neighbours and unstable alkalinity.</p>"
+             "<h2>Placement</h2><p>Give a torch 6 inches of clearance in every direction. "
+             "Their sweepers reach further than people expect, and they lose fights with "
+             "hammers less often than the internet claims.</p>"),
+        ]
+        for order, (title, category, summary, body) in enumerate(articles):
+            Article.objects.get_or_create(
+                title=title,
+                defaults={
+                    "category": category,
+                    "summary": summary,
+                    "body": body,
+                    "author": "The livestock team",
+                    "published_at": timezone.now() - timedelta(days=order * 6),
+                },
+            )
 
     def seed_collections(self, products):
         specs = [

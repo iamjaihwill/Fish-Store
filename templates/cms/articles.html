@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Care guides — {{ site.store_name }}{% endblock %}
+{% block meta_description %}Reef care guides, species spotlights and shop news from {{ site.store_name }}.{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <span class="eyebrow">Reefkeeping</span>
+    <h1>Care guides</h1>
+    <p class="muted">What we've learned keeping these animals alive, written by the people who pack your box.</p>
+    <nav class="account-nav" style="margin-top:1.25rem">
+      <a href="{% url 'cms:articles' %}" {% if not selected %}class="is-active"{% endif %}>All</a>
+      {% for value, label in categories %}
+      <a href="?category={{ value }}" {% if selected == value %}class="is-active"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </header>
+
+  {% if articles %}
+  <div class="category-grid" style="margin-bottom:2rem">
+    {% for article in articles %}
+    <a class="article-card" href="{{ article.get_absolute_url }}">
+      {% if article.hero_image %}<img src="{{ article.hero_image.url }}" alt="" loading="lazy">{% endif %}
+      <div class="article-body">
+        <span class="eyebrow">{{ article.get_category_display }}</span>
+        <h2>{{ article.title }}</h2>
+        <p class="muted small">{{ article.summary|truncatewords:22 }}</p>
+        <span class="muted small">{{ article.published_at|date:"M j, Y" }} · {{ article.reading_minutes }} min read</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% include "partials/pagination.html" %}
+  {% else %}
+  <div class="empty-state"><p class="muted">No guides published yet.</p></div>
+  {% endif %}
+  <div style="height:3rem"></div>
+</div>
+{% endblock %}

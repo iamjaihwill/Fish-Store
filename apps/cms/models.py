@@ -474,3 +474,60 @@ def render_rich_text(value):
         "<p>{}</p>".format(escape(p).replace("\n", "<br>")) for p in paragraphs
     )
     return mark_safe(html)
+
+
+class Article(models.Model):
+    """Care guides and shop news — the content that earns search traffic."""
+
+    class Category(models.TextChoices):
+        CARE = "care", "Care guide"
+        NEWS = "news", "Shop news"
+        SPECIES = "species", "Species spotlight"
+        HOWTO = "howto", "How-to"
+
+    title = models.CharField(max_length=180)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
+    category = models.CharField(
+        max_length=12, choices=Category.choices, default=Category.CARE
+    )
+    summary = models.CharField(max_length=300, blank=True)
+    body = models.TextField(
+        help_text="Blank lines start a new paragraph. Basic HTML is allowed."
+    )
+    hero_image = models.ImageField(upload_to="articles/", blank=True)
+    author = models.CharField(max_length=120, blank=True)
+    related_products = models.ManyToManyField(
+        "catalog.Product", blank=True, related_name="articles"
+    )
+    is_published = models.BooleanField(default=True)
+    published_at = models.DateTimeField(default=timezone.now)
+    seo_title = models.CharField(max_length=180, blank=True)
+    seo_description = models.CharField(max_length=300, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-published_at"]
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)[:200]
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("cms:article", args=[self.slug])
+
+    @property
+    def is_live(self):
+        return self.is_published and self.published_at <= timezone.now()
+
+    @property
+    def body_html(self):
+        return render_rich_text(self.body)
+
+    @property
+    def reading_minutes(self):
+        words = len(self.body.split())
+        return max(1, round(words / 200))

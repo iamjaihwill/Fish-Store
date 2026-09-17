@@ -6,6 +6,7 @@ from django.utils.html import format_html
 
 from apps.catalog.admin import thumbnail
 from apps.cms.models import (
+    Article,
     ContactMessage,
     FaqItem,
     HeroSlide,
@@ -210,3 +211,20 @@ class NewsletterSubscriberAdmin(admin.ModelAdmin):
         self.message_user(
             request, ", ".join(queryset.values_list("email", flat=True))
         )
+
+
+@admin.register(Article)
+class ArticleAdmin(admin.ModelAdmin):
+    list_display = ("title", "category", "author", "is_published", "published_at")
+    list_editable = ("category", "is_published")
+    list_filter = ("category", "is_published", "published_at")
+    search_fields = ("title", "summary", "body", "author")
+    prepopulated_fields = {"slug": ("title",)}
+    autocomplete_fields = ["related_products"]
+    date_hierarchy = "published_at"
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "category", "author", "summary", "hero_image")}),
+        ("Body", {"fields": ("body", "related_products")}),
+        ("Publishing", {"fields": ("is_published", "published_at")}),
+        ("SEO", {"fields": ("seo_title", "seo_description"), "classes": ("collapse",)}),
+    )

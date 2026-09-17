@@ -461,3 +461,26 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(33, 230, 193
 }
 .order-choice:hover { border-color: var(--teal); }
 .order-choice input { accent-color: var(--teal); margin-top: .25rem; }
+
+/* ---------- guides + search suggestions ---------- */
+.article-card { display: block; background: var(--deep); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; transition: .2s ease; }
+.article-card:hover { transform: translateY(-3px); border-color: rgba(33,230,193,.45); }
+.article-card img { aspect-ratio: 16/9; object-fit: cover; width: 100%; }
+.article-body { padding: 1.1rem 1.2rem 1.3rem; }
+.article-body h2 { font-size: 1.05rem; margin: .3rem 0 .5rem; }
+.lede { font-size: 1.08rem; color: #cfe4ee; }
+.more-guides { list-style: none; padding: 0; display: grid; gap: .5rem; }
+.more-guides li { border-bottom: 1px solid var(--line); padding-bottom: .5rem; }
+
+.search { position: relative; }
+.suggest {
+  position: absolute; top: calc(100% + 8px); right: 0; width: min(380px, 80vw);
+  background: var(--deep); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow); padding: .4rem; z-index: 60; max-height: 60vh; overflow-y: auto;
+}
+.suggest-item { display: flex; align-items: center; gap: .6rem; padding: .45rem; border-radius: 8px; }
+.suggest-item:hover { background: var(--surface); }
+.suggest-item img, .suggest-blank { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--surface-2); flex: none; }
+.suggest-name { flex: 1; font-size: .88rem; }
+.suggest-price { font-weight: 650; font-size: .85rem; }
+.suggest-tag { font-size: .62rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; }

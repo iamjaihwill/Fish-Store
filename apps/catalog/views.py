@@ -164,6 +164,41 @@ def collection_detail(request, slug):
     return render(request, "catalog/shop.html", context)
 
 
+def _structured_data(request, product, rating):
+    """schema.org Product JSON-LD: what puts price and stock in search results."""
+    import json
+
+    image = product.primary_image
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": product.name,
+        "description": product.tagline or product.description[:300],
+        "sku": product.sku,
+        "url": request.build_absolute_uri(product.get_absolute_url()),
+        "offers": {
+            "@type": "Offer",
+            "price": str(product.price_from),
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/OutOfStock"
+            if product.is_sold_out
+            else "https://schema.org/InStock",
+            "url": request.build_absolute_uri(product.get_absolute_url()),
+        },
+    }
+    if product.scientific_name:
+        data["alternateName"] = product.scientific_name
+    if image:
+        data["image"] = request.build_absolute_uri(image.image.url)
+    if rating.get("total"):
+        data["aggregateRating"] = {
+            "@type": "AggregateRating",
+            "ratingValue": str(rating["average"]),
+            "reviewCount": rating["total"],
+        }
+    return json.dumps(data)
+
+
 def product_detail(request, slug):
     product = get_object_or_404(
         Product.objects.select_related("category").prefetch_related("images", "tags"),
@@ -182,6 +217,7 @@ def product_detail(request, slug):
     from apps.reviews.models import Review, rating_summary
 
     reviews = Review.objects.for_product(product)[:5]
+    rating = rating_summary(product)
     is_wishlisted = False
     if request.user.is_authenticated:
         from apps.accounts.models import WishlistItem
@@ -199,7 +235,8 @@ def product_detail(request, slug):
             "images": list(product.images.all()),
             "is_wishlisted": is_wishlisted,
             "reviews": reviews,
-            "rating": rating_summary(product),
+            "rating": rating,
+            "structured_data": _structured_data(request, product, rating),
         },
     )
 

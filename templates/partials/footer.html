@@ -24,6 +24,7 @@
       <ul>
         {% for page in footer_pages %}<li><a href="{{ page.get_absolute_url }}">{{ page.title }}</a></li>{% endfor %}
         {% for link in footer_support_links %}<li><a href="{{ link.href }}">{{ link.label }}</a></li>{% endfor %}
+        <li><a href="{% url 'cms:articles' %}">Care guides</a></li>
         <li><a href="{% url 'cms:faq' %}">FAQ</a></li>
         <li><a href="{% url 'shop:order_lookup' %}">Track an order</a></li>
         <li><a href="{% url 'cms:contact' %}">Contact</a></li>

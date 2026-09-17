@@ -1,5 +1,7 @@
 """Make site chrome (settings, nav, announcement) available to every template."""
 
+from django.conf import settings as django_settings
+
 from apps.catalog.models import Category
 from apps.cms.models import NavigationLink, Page, SiteSettings
 
@@ -29,4 +31,10 @@ def site_chrome(request):
             if link.placement == NavigationLink.Placement.FOOTER_SUPPORT
         ],
         "footer_pages": Page.objects.filter(is_published=True, show_in_footer=True),
+        "analytics": {
+            "id": getattr(django_settings, "ANALYTICS_ID", ""),
+            "provider": getattr(django_settings, "ANALYTICS_PROVIDER", ""),
+            "domain": getattr(django_settings, "ANALYTICS_DOMAIN", "")
+            or request.get_host(),
+        },
     }

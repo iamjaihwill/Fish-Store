@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.humanize",
+    "django.contrib.sitemaps",
     "django.contrib.staticfiles",
 ]
 
@@ -148,6 +149,11 @@ STRIPE_SECRET_KEY = env("DJANGO_STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = env("DJANGO_STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = env("DJANGO_STRIPE_WEBHOOK_SECRET", "")
 PAYMENT_BACKEND_CONFIG = {}
+
+# Analytics. Left blank, no snippet is emitted at all.
+ANALYTICS_ID = env("DJANGO_ANALYTICS_ID", "")
+ANALYTICS_PROVIDER = env("DJANGO_ANALYTICS_PROVIDER", "plausible")
+ANALYTICS_DOMAIN = env("DJANGO_ANALYTICS_DOMAIN", "")
 
 # Storefront behaviour knobs that are not merchandising decisions (those live in
 # the CMS SiteSettings record so staff can change them without a deploy).

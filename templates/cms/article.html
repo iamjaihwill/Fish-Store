@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ article.seo_title|default:article.title }} — {{ site.store_name }}{% endblock %}
+{% block meta_description %}{{ article.seo_description|default:article.summary }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ article.title }}{% endblock %}
+{% block og_description %}{{ article.seo_description|default:article.summary }}{% endblock %}
+{% block og_image %}{% if article.hero_image %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ article.hero_image.url }}">{% endif %}{% endblock %}
+{% block content %}
+<article class="wrap" style="max-width:760px">
+  <header class="page-header">
+    <div class="breadcrumbs"><a href="{% url 'cms:articles' %}">Care guides</a> / <span>{{ article.get_category_display }}</span></div>
+    <h1>{{ article.title }}</h1>
+    <p class="muted">
+      {% if article.author %}{{ article.author }} · {% endif %}{{ article.published_at|date:"F j, Y" }} · {{ article.reading_minutes }} min read
+    </p>
+  </header>
+  {% if article.hero_image %}
+  <img src="{{ article.hero_image.url }}" alt="" style="border-radius:16px;margin-bottom:2rem">
+  {% endif %}
+  {% if article.summary %}<p class="lede">{{ article.summary }}</p>{% endif %}
+  <div class="prose">{{ article.body_html }}</div>
+
+  {% if related %}
+  <section class="section">
+    <div class="section-head"><h2>Mentioned in this guide</h2></div>
+    <div class="product-grid">
+      {% for product in related %}{% include "partials/product_card.html" %}{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if more %}
+  <section class="section" style="margin-bottom:4rem">
+    <div class="section-head"><h2>More guides</h2></div>
+    <ul class="more-guides">
+      {% for other in more %}<li><a href="{{ other.get_absolute_url }}">{{ other.title }}</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

@@ -2,6 +2,13 @@
 {% load static %}
 {% block title %}{{ product.name }} — {{ site.store_name }}{% endblock %}
 {% block meta_description %}{{ product.tagline|default:product.description|truncatewords:25 }}{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_title %}{{ product.name }}{% endblock %}
+{% block og_description %}{{ product.tagline|default:product.description|truncatewords:25 }}{% endblock %}
+{% block og_image %}{% with image=product.primary_image %}{% if image %}<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ image.image.url }}">{% endif %}{% endwith %}{% endblock %}
+{% block structured_data %}
+<script type="application/ld+json">{{ structured_data|safe }}</script>
+{% endblock %}
 
 {% block content %}
 <div class="wrap">

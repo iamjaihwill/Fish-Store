@@ -1,0 +1,19 @@
+{% comment %}
+Privacy-first analytics, emitted only when configured. Nothing is loaded at all
+when ANALYTICS_ID is blank, so development and tests stay clean.
+{% endcomment %}
+{% if analytics.id %}
+  {% if analytics.provider == "plausible" %}
+    <script defer data-domain="{{ analytics.domain }}" src="https://plausible.io/js/script.js"></script>
+  {% elif analytics.provider == "fathom" %}
+    <script src="https://cdn.usefathom.com/script.js" data-site="{{ analytics.id }}" defer></script>
+  {% elif analytics.provider == "ga4" %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics.id }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ analytics.id }}');
+    </script>
+  {% endif %}
+{% endif %}

@@ -2,7 +2,7 @@
 
 A complete saltwater livestock store: a public storefront for corals, fish, inverts and
 dry goods, plus a content-managed admin that shop staff run the whole site from — catalog,
-homepage composition, policy pages, live sale calendar and order fulfillment.
+homepage composition, policy pages, live sale calendar, rewards and order fulfillment.
 
 Built with Django 5 and SQLite. No JavaScript build step, no framework CSS, no paid
 services required to run it.
@@ -38,6 +38,22 @@ preference, and requires accepting the livestock terms when the cart contains an
 **After the sale.** Order lookup by number + email, a delivery status track, and a
 dead-on-arrival claim form that opens for eight hours after delivery is recorded.
 
+**Accounts.** Registration claims past guest orders on the same email, so history is never
+stranded by having checked out as a guest. Saved addresses prefill checkout, a wishlist
+doubles as the back-in-stock notification list, and order history spans both account and
+guest purchases.
+
+**Reviews.** Moderated before publishing, with a verified-purchase badge driven by whether
+that email or account actually bought the item on a non-cancelled order.
+
+**Money.** Reward points, gift cards and discount codes, all priced through one function so
+they stack in a fixed order. Payments run through a pluggable backend: invoice by default,
+Stripe when configured.
+
+**Content.** Care guides and species spotlights, sitemap.xml, robots.txt, Product JSON-LD
+with price, availability and aggregate rating, Open Graph tags, and instant search
+suggestions in the header.
+
 ## Livestock-specific behaviour
 
 This is the part that separates a coral store from ordinary retail, and it is modelled
@@ -52,7 +68,21 @@ rather than bolted on:
 - **The DOA window** opens when staff mark an order delivered and closes eight hours later.
 - **Stock is locked at checkout.** Order placement runs in a transaction with
   `select_for_update`, so two people racing for the last colony cannot both win it — the
-  loser gets a clear message and an adjusted cart rather than an oversold order.
+  loser gets a clear message and an adjusted cart rather than an oversold order. This
+  matches how these stores describe their own live sales: the same coral can sit in
+  several carts, and the first to finish checkout takes it.
+- **Add to an existing order.** A customer who wins several corals across a live sale
+  evening puts each later win into a box that has not shipped yet, instead of paying
+  overnight shipping twice.
+- **A shipping calendar, not just shipping days.** Orders before a configurable cutoff go
+  out the same business day; after it, the next ship day. A requested delivery date that
+  is not a ship day is rejected with the next available day named.
+- **Variants where livestock needs them** — frag vs. mini colony, pack sizes — with the
+  variant owning price and stock, and the listing showing a "from" price.
+- **Frag packs and mystery boxes**, where a pack lists its contents and a mystery box
+  deliberately does not.
+- **Wholesale pricing** for approved trade accounts. Applying is not approval.
+- **Points cannot be spent during a live sale** but are still earned during one.
 
 ## What staff manage in the CMS
 
@@ -70,6 +100,12 @@ Everything below is editable in the admin without touching code or redeploying:
 | **Live sale events** | Scheduled drops with countdown timers and a linked collection |
 | **Orders** | Fulfillment workflow with bulk actions: paid → packing → shipped → delivered, cancel-and-restock, tracking numbers |
 | **DOA claims, Contact messages, Subscribers** | Customer service inboxes |
+| **Variants, videos, pack contents** | Per-product options, YouTube/Vimeo/MP4 video, frag pack contents |
+| **Reviews** | Moderation queue with bulk publish/reject and staff replies |
+| **Rewards settings, gift cards, discount codes** | Earn rate, expiry, redemption rules; card balances; promo codes and their redemptions |
+| **Payments** | Charge records, off-site payment recording, provider refunds |
+| **Customers** | Profiles, addresses, wholesale approval |
+| **Care guides** | Blog articles with SEO fields and related products |
 
 Rich text fields accept either plain text (blank lines become paragraphs, everything is
 escaped) or authored HTML — copy that *begins* with a block-level tag is passed through as
@@ -82,13 +118,30 @@ escaped correctly instead of being mistaken for HTML.
 config/            settings, root URLconf, WSGI
 apps/
   core/            shared utilities, seed command, procedural image generator
-  catalog/         Category, Product, ProductImage, Collection, Tag + browsing views
-  cms/             SiteSettings, HeroSlide, HomepageSection, Page, FAQ, nav, events
-  shop/            Cart, Order, OrderItem, DoaClaim, checkout services
+  accounts/        Customer, Address, WishlistItem + the account area
+  catalog/         Product, Variant, Image, Video, Bundle, Collection, Tag + browsing
+  cms/             SiteSettings, homepage composition, Pages, FAQ, events, Articles, sitemaps
+  shop/            Cart, Order, pricing, checkout, order additions, DOA claims
+  reviews/         Moderated reviews with verified-purchase detection
+  rewards/         Points ledger, gift cards, discount codes
+  payments/        Backend contract, invoice/credit/Stripe backends, webhooks
 templates/         storefront templates (base, partials, per-app)
 static/css/        one hand-written stylesheet
 static/js/         progressive enhancement only — every feature works without it
 ```
+
+### Two design decisions worth knowing
+
+**Variants are optional, not universal.** A product without variants sells on its own price
+and stock. Once it has variants, the variant owns price and inventory. This keeps simple
+listings simple, which is most of a coral catalog, at the cost of two code paths in the
+cart — a trade made deliberately, and the reason the variant refactor landed without
+rewriting a single existing test.
+
+**Credits stack in a fixed order.** Discount code comes off the merchandise, tax is charged
+on the discounted goods, then points, then gift cards — which behave like money and cover
+shipping and tax as well as goods. All of it lives in `apps/shop/pricing.py`, so there is
+exactly one place where an order total is decided.
 
 ## Tests
 
@@ -96,9 +149,13 @@ static/js/         progressive enhancement only — every feature works without 
 .venv/bin/python manage.py test
 ```
 
-103 tests covering catalog filtering and publication rules, WYSIWYG quantity enforcement,
-cart arithmetic and stock clamping, shipping and tax quoting, the checkout race condition,
-order privacy, CMS rendering and validation, the admin bulk actions, and the seed command.
+287 tests covering catalog filtering and publication rules, WYSIWYG quantity enforcement,
+variant stock and cart separation, cart arithmetic and stock clamping, shipping and tax
+quoting, the checkout race condition, order privacy, account registration and guest-order
+claiming, wishlist and restock alerts, review moderation and verified purchases, points
+expiry and redemption limits, gift card overdraw and splitting, the payment webhook path
+including forged and replayed signatures, the shipping cutoff calendar, order additions,
+wholesale pricing, CMS rendering, SEO output, the admin bulk actions, and the seed command.
 
 ## Seeding
 
@@ -125,11 +182,19 @@ list. With `DEBUG=False` the app enables HSTS, secure cookies and SSL redirect, 
 static files through WhiteNoise (`manage.py collectstatic` first). Media files are written
 to `DJANGO_MEDIA_ROOT` — put that on persistent storage.
 
-**Payment is deliberately not wired up.** Orders are created with status *Awaiting payment*
-and the customer is told they will be invoiced; this matches how many coral shops actually
-operate (especially for live sale claims). Dropping in Stripe means adding a payment step
-between `place_order` and the confirmation redirect in `apps/shop/views.py` — the order,
-totals and inventory hold are already in place at that point.
+**Payments** default to the invoice backend, which needs no credentials and matches how many
+coral shops actually operate, especially for live sale claims where the final box is
+assembled from several wins. To take cards, set `DJANGO_PAYMENT_BACKEND=stripe` plus
+`DJANGO_STRIPE_SECRET_KEY`, `DJANGO_STRIPE_PUBLISHABLE_KEY` and
+`DJANGO_STRIPE_WEBHOOK_SECRET`, and point a Stripe webhook at `/payments/webhook/`. The
+Stripe backend was written and tested against mocked API responses — it has never been run
+against live Stripe credentials, so verify it in test mode before taking real money.
+
+**Analytics** emit nothing unless `DJANGO_ANALYTICS_ID` is set. Plausible, Fathom and GA4
+are supported.
+
+**Scheduled work:** run `manage.py send_restock_alerts` on a timer (cron, systemd, Celery
+beat) to email wishlist holders when sold-out products return.
 
 SQLite is fine for a store this size. If you outgrow it, `DATABASES` is the only thing that
 needs to change.
