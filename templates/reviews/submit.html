@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Review {{ product.name }} — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:680px">
+  <header class="page-header">
+    <div class="breadcrumbs"><a href="{{ product.get_absolute_url }}">{{ product.name }}</a> / <span>Write a review</span></div>
+    <h1>Review {{ product.name }}</h1>
+    <p class="muted">Tell other reefers how it settled in. Reviews are read by a human before they publish.</p>
+  </header>
+  <form method="post" enctype="multipart/form-data" class="panel" style="margin-bottom:4rem">
+    {% csrf_token %}
+    <div class="field">
+      <label>Rating</label>
+      <div class="rating-choice">{{ form.rating }}</div>
+      {{ form.rating.errors }}
+    </div>
+    <div class="form-grid" style="margin-top:1rem">
+      <div class="field full">{{ form.title.label_tag }}{{ form.title }}</div>
+      <div class="field full">{{ form.body.label_tag }}{{ form.body }}{{ form.body.errors }}</div>
+      <div class="field full">{{ form.photo.label_tag }}{{ form.photo }}</div>
+      <div class="field {% if form.author_email %}{% else %}full{% endif %}">{{ form.author_name.label_tag }}{{ form.author_name }}{{ form.author_name.errors }}</div>
+      {% if form.author_email %}<div class="field">{{ form.author_email.label_tag }}{{ form.author_email }}{{ form.author_email.errors }}</div>{% endif %}
+    </div>
+    <button class="btn btn-primary btn-block" type="submit" style="margin-top:1rem">Submit review</button>
+  </form>
+</div>
+{% endblock %}

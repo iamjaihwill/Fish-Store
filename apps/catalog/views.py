@@ -179,6 +179,9 @@ def product_detail(request, slug):
         .filter(category=product.category)
         .exclude(pk=product.pk)[:4]
     )
+    from apps.reviews.models import Review, rating_summary
+
+    reviews = Review.objects.for_product(product)[:5]
     is_wishlisted = False
     if request.user.is_authenticated:
         from apps.accounts.models import WishlistItem
@@ -195,6 +198,8 @@ def product_detail(request, slug):
             "related": related,
             "images": list(product.images.all()),
             "is_wishlisted": is_wishlisted,
+            "reviews": reviews,
+            "rating": rating_summary(product),
         },
     )
 

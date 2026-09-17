@@ -1,0 +1,16 @@
+<article class="review">
+  <div class="review-head">
+    <span class="stars" aria-label="{{ review.rating }} out of 5">{% for _ in review.stars %}★{% endfor %}<span class="stars-empty">{% for _ in review.empty_stars %}★{% endfor %}</span></span>
+    {% if review.is_verified_purchase %}<span class="chip chip-verified">Verified purchase</span>{% endif %}
+  </div>
+  {% if review.title %}<h3 class="review-title">{{ review.title }}</h3>{% endif %}
+  <p>{{ review.body|linebreaksbr }}</p>
+  {% if review.photo %}<img class="review-photo" src="{{ review.photo.url }}" alt="Customer photo" loading="lazy">{% endif %}
+  <footer class="muted small">{{ review.author_name }} · {{ review.published_at|default:review.created_at|date:"M j, Y" }}</footer>
+  {% if review.staff_reply %}
+  <div class="review-reply">
+    <strong class="small">{{ site.store_name }} replied</strong>
+    <p class="small muted" style="margin:.3rem 0 0">{{ review.staff_reply|linebreaksbr }}</p>
+  </div>
+  {% endif %}
+</article>

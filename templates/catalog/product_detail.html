@@ -62,6 +62,12 @@
     <div class="product-meta">
       <h1>{{ product.name }}</h1>
       {% if product.scientific_name %}<p class="card-sci">{{ product.scientific_name }}</p>{% endif %}
+      {% if rating.total %}
+      <p class="rating-line">
+        <span class="stars" aria-label="{{ rating.average }} out of 5">{% for _ in "12345"|make_list %}{% if forloop.counter <= rating.rounded %}★{% else %}<span class="stars-empty">★</span>{% endif %}{% endfor %}</span>
+        <a href="{% url 'reviews:list' product.slug %}" class="muted small">{{ rating.average }} · {{ rating.total }} review{{ rating.total|pluralize }}</a>
+      </p>
+      {% endif %}
       {% if product.tagline %}<p class="muted">{{ product.tagline }}</p>{% endif %}
 
       <div class="price-line">
@@ -203,6 +209,21 @@
       {% endif %}
     </div>
   </div>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <h2>Reviews</h2>
+        {% if rating.total %}<p>{{ rating.average }} out of 5 from {{ rating.total }} review{{ rating.total|pluralize }}.</p>
+        {% else %}<p>No reviews yet — be the first to say how it settled in.</p>{% endif %}
+      </div>
+      <a class="btn btn-ghost" href="{% url 'reviews:submit' product.slug %}">Write a review</a>
+    </div>
+    {% for review in reviews %}{% include "reviews/_review.html" %}{% endfor %}
+    {% if rating.total > 5 %}
+    <p><a href="{% url 'reviews:list' product.slug %}">Read all {{ rating.total }} reviews</a></p>
+    {% endif %}
+  </section>
 
   {% if related %}
   <section class="section">

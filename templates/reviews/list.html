@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Reviews of {{ product.name }} — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:820px">
+  <header class="page-header">
+    <div class="breadcrumbs"><a href="{{ product.get_absolute_url }}">{{ product.name }}</a> / <span>Reviews</span></div>
+    <h1>Reviews of {{ product.name }}</h1>
+  </header>
+  <div style="margin-bottom:4rem">
+    {% for review in reviews %}{% include "reviews/_review.html" %}{% empty %}
+    <div class="empty-state"><p class="muted">No published reviews yet.</p></div>
+    {% endfor %}
+    {% include "partials/pagination.html" %}
+    <p style="margin-top:1.5rem"><a class="btn btn-primary" href="{% url 'reviews:submit' product.slug %}">Write a review</a></p>
+  </div>
+</div>
+{% endblock %}
