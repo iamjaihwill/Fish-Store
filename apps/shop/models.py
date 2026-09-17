@@ -202,8 +202,15 @@ class Order(models.Model):
         """Return reserved inventory to the catalog (cancellations/refunds)."""
         from apps.catalog.models import Product
 
-        for item in self.items.select_related("product"):
-            if item.product_id and item.product.track_inventory:
+        from apps.catalog.models import ProductVariant
+
+        for item in self.items.select_related("product", "variant"):
+            if item.variant_id:
+                if item.variant.track_inventory:
+                    ProductVariant.objects.filter(pk=item.variant_id).update(
+                        stock_quantity=models.F("stock_quantity") + item.quantity
+                    )
+            elif item.product_id and item.product.track_inventory:
                 Product.objects.filter(pk=item.product_id).update(
                     stock_quantity=models.F("stock_quantity") + item.quantity
                 )
@@ -218,8 +225,16 @@ class OrderItem(models.Model):
         on_delete=models.SET_NULL,
         related_name="order_items",
     )
+    variant = models.ForeignKey(
+        "catalog.ProductVariant",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="order_items",
+    )
     # Snapshots so history survives catalog edits and deletions.
     name = models.CharField(max_length=180)
+    variant_name = models.CharField(max_length=80, blank=True)
     sku = models.CharField(max_length=40, blank=True)
     unit_price = models.DecimalField(**MONEY)
     quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
@@ -230,7 +245,13 @@ class OrderItem(models.Model):
         ordering = ["pk"]
 
     def __str__(self):
+        if self.variant_name:
+            return f"{self.quantity} x {self.name} ({self.variant_name})"
         return f"{self.quantity} x {self.name}"
+
+    @property
+    def display_name(self):
+        return f"{self.name} ({self.variant_name})" if self.variant_name else self.name
 
     @property
     def line_total(self):

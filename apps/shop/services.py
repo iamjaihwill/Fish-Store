@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.template.loader import render_to_string
 
-from apps.catalog.models import Product
+from apps.catalog.models import Product, ProductVariant
 from apps.cms.models import SiteSettings
 from apps.shop.models import Order, OrderItem, quote_shipping
 
@@ -14,10 +14,12 @@ from apps.shop.models import Order, OrderItem, quote_shipping
 class OutOfStock(Exception):
     """Raised when stock disappeared between the cart page and checkout."""
 
-    def __init__(self, product, available):
+    def __init__(self, product, available, variant=None):
         self.product = product
         self.available = available
-        super().__init__(f"{product.name} only has {available} available.")
+        self.variant = variant
+        label = f"{product.name} ({variant.name})" if variant else product.name
+        super().__init__(f"{label} only has {available} available.")
 
 
 @transaction.atomic
@@ -55,25 +57,42 @@ def place_order(cart, details, customer=None):
     contains_livestock = False
 
     for line in lines:
-        # Lock the row so concurrent checkouts serialize on this product.
+        # Lock the row so concurrent checkouts serialize on this product. For a
+        # variant product the variant row is the contended one.
         product = Product.objects.select_for_update().get(pk=line.product.pk)
-        if not product.can_fulfill(line.quantity):
-            raise OutOfStock(product, product.max_orderable)
+        variant = None
+        if line.variant is not None:
+            variant = ProductVariant.objects.select_for_update().get(
+                pk=line.variant.pk
+            )
+            if not variant.is_active or not variant.can_fulfill(line.quantity):
+                raise OutOfStock(product, variant.max_orderable, variant=variant)
+            unit_price = variant.price
+        else:
+            if not product.can_fulfill(line.quantity):
+                raise OutOfStock(product, product.max_orderable)
+            unit_price = product.price
 
         OrderItem.objects.create(
             order=order,
             product=product,
+            variant=variant,
             name=product.name,
-            sku=product.sku,
-            unit_price=product.price,
+            variant_name=variant.name if variant else "",
+            sku=variant.sku if variant else product.sku,
+            unit_price=unit_price,
             quantity=line.quantity,
             is_livestock=product.is_livestock,
             is_wysiwyg=product.is_wysiwyg,
         )
-        if product.track_inventory:
+        if variant is not None:
+            if variant.track_inventory:
+                variant.stock_quantity -= line.quantity
+                variant.save(update_fields=["stock_quantity"])
+        elif product.track_inventory:
             product.stock_quantity -= line.quantity
             product.save(update_fields=["stock_quantity", "updated_at"])
-        subtotal += product.price * line.quantity
+        subtotal += unit_price * line.quantity
         contains_livestock = contains_livestock or product.is_livestock
 
     order.subtotal = subtotal.quantize(Decimal("0.01"))

@@ -23,7 +23,7 @@
         </a>
         {% endwith %}
         <div>
-          <h3 class="card-title"><a href="{{ line.product.get_absolute_url }}">{{ line.product.name }}</a></h3>
+          <h3 class="card-title"><a href="{{ line.product.get_absolute_url }}">{{ line.label }}</a></h3>
           <p class="muted small" style="margin:.2rem 0">
             ${{ line.unit_price }} each
             {% if line.product.is_wysiwyg %} · one of one{% endif %}
@@ -37,8 +37,9 @@
           <form method="post" action="{% url 'shop:update_cart' line.product.slug %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{% url 'shop:cart' %}">
+            {% if line.variant %}<input type="hidden" name="variant" value="{{ line.variant.pk }}">{% endif %}
             <input type="number" name="quantity" value="{{ line.quantity }}" min="0"
-                   max="{{ line.product.max_orderable }}" aria-label="Quantity for {{ line.product.name }}"
+                   max="{{ line.available_quantity }}" aria-label="Quantity for {{ line.product.name }}"
                    {% if line.product.is_wysiwyg %}readonly{% endif %}>
             <button class="btn btn-ghost small" type="submit">Update</button>
           </form>
@@ -46,7 +47,8 @@
           <form method="post" action="{% url 'shop:remove_from_cart' line.product.slug %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{% url 'shop:cart' %}">
-            <button class="btn btn-ghost small" type="submit" aria-label="Remove {{ line.product.name }}">Remove</button>
+            {% if line.variant %}<input type="hidden" name="variant" value="{{ line.variant.pk }}">{% endif %}
+            <button class="btn btn-ghost small" type="submit" aria-label="Remove {{ line.label }}">Remove</button>
           </form>
         </div>
       </div>

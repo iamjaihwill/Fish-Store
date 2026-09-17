@@ -69,7 +69,7 @@
       <h2 style="font-size:1.15rem">Your order</h2>
       {% for line in cart %}
       <div class="summary-row">
-        <span>{{ line.quantity }} × {{ line.product.name|truncatechars:28 }}</span>
+        <span>{{ line.quantity }} × {{ line.label|truncatechars:28 }}</span>
         <span>${{ line.line_total }}</span>
       </div>
       {% endfor %}

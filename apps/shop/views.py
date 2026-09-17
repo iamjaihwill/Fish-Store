@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.catalog.models import Product
+from apps.catalog.models import Product, ProductVariant
 from apps.shop.cart import Cart
 from apps.shop.forms import CheckoutForm, DoaClaimForm, OrderLookupForm
 from apps.shop.models import Order
@@ -20,9 +20,20 @@ def _back(request, fallback="shop:cart"):
     return HttpResponseRedirect(request.POST.get("next") or reverse(fallback))
 
 
+def _requested_variant(request, product):
+    """The variant chosen on the form, validated as belonging to this product."""
+    variant_id = request.POST.get("variant")
+    if not variant_id:
+        return None
+    return get_object_or_404(
+        ProductVariant, pk=variant_id, product=product, is_active=True
+    )
+
+
 @require_POST
 def add_to_cart(request, slug):
     product = get_object_or_404(Product.objects.published(), slug=slug)
+    variant = _requested_variant(request, product)
     try:
         quantity = int(request.POST.get("quantity", 1))
     except (TypeError, ValueError):
@@ -31,21 +42,23 @@ def add_to_cart(request, slug):
 
     cart = Cart(request)
     before = len(cart)
-    placed = cart.add(product, quantity)
+    placed = cart.add(product, quantity, variant=variant)
 
+    label = f"{product.name} ({variant.name})" if variant else product.name
+    ceiling = variant.max_orderable if variant else product.max_orderable
     if placed == before:
         messages.error(
             request,
-            f"{product.name} is sold out."
-            if product.is_sold_out
-            else f"We only have {product.max_orderable} of {product.name} left.",
+            f"{label} is sold out."
+            if ceiling == 0
+            else f"We only have {ceiling} of {label} left.",
         )
     elif product.is_wysiwyg:
         messages.success(
-            request, f"{product.name} is held in your cart — it's a one-of-a-kind piece."
+            request, f"{label} is held in your cart — it's a one-of-a-kind piece."
         )
     else:
-        messages.success(request, f"Added {product.name} to your cart.")
+        messages.success(request, f"Added {label} to your cart.")
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({"count": len(cart), "subtotal": str(cart.subtotal)})
@@ -55,19 +68,21 @@ def add_to_cart(request, slug):
 @require_POST
 def update_cart(request, slug):
     product = get_object_or_404(Product, slug=slug)
+    variant = _requested_variant(request, product)
+    label = f"{product.name} ({variant.name})" if variant else product.name
     cart = Cart(request)
     try:
         quantity = int(request.POST.get("quantity", 0))
     except (TypeError, ValueError):
         quantity = 0
     if quantity <= 0:
-        cart.remove(product)
-        messages.info(request, f"Removed {product.name}.")
+        cart.remove(product, variant=variant)
+        messages.info(request, f"Removed {label}.")
     else:
-        final = cart.set_quantity(product, quantity)
+        final = cart.set_quantity(product, quantity, variant=variant)
         if final < quantity:
             messages.warning(
-                request, f"Only {final} of {product.name} available — cart updated."
+                request, f"Only {final} of {label} available — cart updated."
             )
     return _back(request)
 
@@ -75,7 +90,8 @@ def update_cart(request, slug):
 @require_POST
 def remove_from_cart(request, slug):
     product = get_object_or_404(Product, slug=slug)
-    Cart(request).remove(product)
+    variant = _requested_variant(request, product)
+    Cart(request).remove(product, variant=variant)
     messages.info(request, f"Removed {product.name}.")
     return _back(request)
 

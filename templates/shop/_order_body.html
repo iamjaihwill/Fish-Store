@@ -15,7 +15,7 @@
       {% for item in order.items.all %}
       <div class="summary-row">
         <span>
-          {{ item.quantity }} × {{ item.name }}
+          {{ item.quantity }} × {{ item.display_name }}
           {% if item.is_wysiwyg %}<span class="chip">WYSIWYG</span>{% endif %}
         </span>
         <span>${{ item.line_total }}</span>

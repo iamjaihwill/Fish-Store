@@ -39,6 +39,21 @@
       {% with first=product.primary_image %}
         {% if first.caption %}<p class="image-caption" id="gallery-caption">{{ first.caption }}</p>{% endif %}
       {% endwith %}
+      {% for video in product.videos.all %}
+      <div class="video-frame">
+        {% if video.is_embed %}
+          <iframe src="{{ video.embed_url }}" title="{{ video.title|default:product.name }}"
+                  loading="lazy" allowfullscreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"></iframe>
+        {% else %}
+          <video controls preload="none" {% if video.thumbnail %}poster="{{ video.thumbnail.url }}"{% endif %}>
+            <source src="{{ video.url }}">
+          </video>
+        {% endif %}
+      </div>
+      {% if video.title %}<p class="image-caption">{{ video.title }}</p>{% endif %}
+      {% endfor %}
+
       {% if product.is_wysiwyg %}
       <p class="image-caption">This is the exact specimen you will receive, photographed in our display system under standard reef lighting. Colors may shift slightly as it settles into your tank.</p>
       {% endif %}
@@ -50,8 +65,12 @@
       {% if product.tagline %}<p class="muted">{{ product.tagline }}</p>{% endif %}
 
       <div class="price-line">
-        <span class="price">${{ product.price }}</span>
-        {% if product.is_on_sale %}<span class="price-was">${{ product.compare_at_price }}</span>{% endif %}
+        {% if product.has_variants %}
+          <span class="muted small">from</span><span class="price">${{ product.price_from }}</span>
+        {% else %}
+          <span class="price">${{ product.price }}</span>
+          {% if product.is_on_sale %}<span class="price-was">${{ product.compare_at_price }}</span>{% endif %}
+        {% endif %}
       </div>
 
       <div class="buy-box">
@@ -69,6 +88,20 @@
           <form method="post" action="{% url 'shop:add_to_cart' product.slug %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if product.has_variants %}
+            <div class="field" style="margin-bottom:.9rem">
+              <label for="variant">Option</label>
+              <select name="variant" id="variant" required>
+                {% for variant in product.sellable_variants %}
+                <option value="{{ variant.pk }}"
+                        {% if variant.is_default %}selected{% endif %}
+                        {% if not variant.in_stock %}disabled{% endif %}>
+                  {{ variant.name }} — ${{ variant.price }}{% if not variant.in_stock %} (sold out){% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
             <div class="qty-row">
               {% if product.is_wysiwyg %}
                 <input type="hidden" name="quantity" value="1">
@@ -96,6 +129,25 @@
         </p>
         {% endif %}
       </div>
+
+      {% if product.is_bundle %}
+      <div class="panel" style="margin-bottom:1.25rem">
+        <h2 style="font-size:1.05rem">What's in the pack</h2>
+        {% if product.is_mystery %}
+          <p class="muted small">
+            That's the fun of it — a mystery box is curated on packing day from what
+            is colouring up best{% if product.bundle_size %}, {{ product.bundle_size }} pieces in total{% endif %}.
+            Every piece is a named coral we also sell individually.
+          </p>
+        {% else %}
+          <ul class="bundle-list">
+            {% for item in product.bundle_items.all %}
+            <li>{{ item.quantity }} × <a href="{{ item.product.get_absolute_url }}">{{ item.product.name }}</a></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+      {% endif %}
 
       {% if product.care_facts %}
       <h2 style="font-size:1.05rem">Care requirements</h2>

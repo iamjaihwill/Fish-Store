@@ -5,6 +5,7 @@
       {% if product.is_wysiwyg %}<span class="badge badge-wysiwyg">WYSIWYG</span>{% endif %}
       {% if product.is_on_sale %}<span class="badge badge-sale">-{{ product.discount_percent }}%</span>{% endif %}
       {% if product.is_aquacultured %}<span class="badge badge-aqua">Aquacultured</span>{% endif %}
+      {% if product.is_bundle %}<span class="badge badge-bundle">{% if product.is_mystery %}Mystery box{% else %}Frag pack{% endif %}</span>{% endif %}
       {% if product.badge %}<span class="badge badge-custom">{{ product.badge }}</span>{% endif %}
     </div>
     {% if product.is_sold_out %}<div class="sold-out-veil">Sold out</div>{% endif %}
@@ -28,8 +29,12 @@
     {% endif %}
     {% if product.is_low_stock %}<span class="stock-note">Only {{ product.stock_quantity }} left</span>{% endif %}
     <div class="card-price">
-      <span class="price">${{ product.price }}</span>
-      {% if product.is_on_sale %}<span class="price-was">${{ product.compare_at_price }}</span>{% endif %}
+      {% if product.has_variants %}
+        <span class="muted small">from</span><span class="price">${{ product.price_from }}</span>
+      {% else %}
+        <span class="price">${{ product.price }}</span>
+        {% if product.is_on_sale %}<span class="price-was">${{ product.compare_at_price }}</span>{% endif %}
+      {% endif %}
     </div>
   </div>
   <div class="card-actions">

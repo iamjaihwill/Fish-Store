@@ -21,6 +21,7 @@ class ProductType(models.TextChoices):
     FISH = "fish", "Fish"
     INVERT = "invertebrate", "Invertebrate"
     DRY_GOODS = "dry_goods", "Dry goods"
+    BUNDLE = "bundle", "Frag pack / bundle"
 
 
 LIVESTOCK_TYPES = {ProductType.CORAL, ProductType.FISH, ProductType.INVERT}
@@ -243,6 +244,17 @@ class Product(models.Model):
     acclimation_notes = models.TextField(blank=True)
 
     # --- merchandising ---------------------------------------------------
+    # --- bundles (frag packs, mystery boxes) -----------------------------
+    is_mystery = models.BooleanField(
+        default=False,
+        help_text="Bundle whose exact contents are a surprise (mystery box).",
+    )
+    bundle_size = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="How many pieces a frag pack contains, when it is a bundle.",
+    )
+
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.DRAFT
     )
@@ -293,13 +305,48 @@ class Product(models.Model):
         return self.status == self.Status.ACTIVE and self.published_at <= timezone.now()
 
     @property
+    def is_bundle(self):
+        return self.product_type == ProductType.BUNDLE
+
+    @property
+    def has_variants(self):
+        return self.variants.exists()
+
+    @property
+    def sellable_variants(self):
+        return [v for v in self.variants.all() if v.is_active]
+
+    @property
+    def default_variant(self):
+        """The variant a bare "add to cart" should use, if any."""
+        variants = self.sellable_variants
+        if not variants:
+            return None
+        return next(
+            (v for v in variants if v.is_default and v.in_stock),
+            next((v for v in variants if v.in_stock), variants[0]),
+        )
+
+    @property
+    def price_from(self):
+        """Lowest sellable price, for "from $X" display on variant products."""
+        variants = self.sellable_variants
+        if not variants:
+            return self.price
+        return min(v.price for v in variants)
+
+    @property
     def available_quantity(self):
+        if self.has_variants:
+            return sum(v.available_quantity for v in self.sellable_variants)
         if not self.track_inventory:
             return None  # unlimited
         return max(self.stock_quantity, 0)
 
     @property
     def is_sold_out(self):
+        if self.has_variants:
+            return not any(v.in_stock for v in self.sellable_variants)
         return self.track_inventory and self.stock_quantity <= 0
 
     @property
@@ -353,10 +400,14 @@ class Product(models.Model):
         ]
         return [(label, value) for label, value in facts if value]
 
-    def can_fulfill(self, quantity):
+    def can_fulfill(self, quantity, variant=None):
         """Can this product ship ``quantity`` units right now?"""
         if not self.is_published:
             return False
+        if variant is not None:
+            return variant.is_active and variant.can_fulfill(quantity)
+        if self.has_variants:
+            return any(v.can_fulfill(quantity) for v in self.sellable_variants)
         if not self.track_inventory:
             return True
         return self.stock_quantity >= quantity
@@ -365,6 +416,9 @@ class Product(models.Model):
     def max_orderable(self):
         if self.is_wysiwyg:
             return min(1, self.stock_quantity)
+        if self.has_variants:
+            variants = self.sellable_variants
+            return max((v.max_orderable for v in variants), default=0)
         if not self.track_inventory:
             return 99
         return max(self.stock_quantity, 0)
@@ -470,3 +524,153 @@ def _generate_sku(product):
         candidate = f"{prefix}-{stem}-{counter}"
         counter += 1
     return candidate
+
+
+class ProductVariant(models.Model):
+    """A sellable option of a product: frag vs. colony, or a pack size.
+
+    Products without variants sell directly and keep their own price and stock.
+    Once a product has variants, the variant owns price and inventory and the
+    product's own price becomes the "from" price shown on listings.
+    """
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="variants"
+    )
+    name = models.CharField(
+        max_length=80, help_text='e.g. "Single frag", "Mini colony", "10 pack"'
+    )
+    sku = models.CharField(max_length=48, unique=True, blank=True)
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))]
+    )
+    compare_at_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    stock_quantity = models.IntegerField(default=0)
+    track_inventory = models.BooleanField(default=True)
+    pack_quantity = models.PositiveIntegerField(
+        default=1, help_text="How many animals or items this option contains."
+    )
+    is_default = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "price"]
+        unique_together = [("product", "name")]
+
+    def __str__(self):
+        return f"{self.product.name} — {self.name}"
+
+    def save(self, *args, **kwargs):
+        if not self.sku:
+            base = f"{self.product.sku or slugify(self.product.name).upper()[:8]}"
+            suffix = slugify(self.name).upper().replace("-", "")[:6] or "OPT"
+            candidate = f"{base}-{suffix}"
+            counter = 2
+            while (
+                ProductVariant.objects.filter(sku=candidate)
+                .exclude(pk=self.pk)
+                .exists()
+            ):
+                candidate = f"{base}-{suffix}-{counter}"
+                counter += 1
+            self.sku = candidate
+        super().save(*args, **kwargs)
+        if self.is_default:
+            ProductVariant.objects.filter(product=self.product).exclude(
+                pk=self.pk
+            ).update(is_default=False)
+
+    @property
+    def in_stock(self):
+        return not self.track_inventory or self.stock_quantity > 0
+
+    @property
+    def available_quantity(self):
+        if not self.track_inventory:
+            return 99
+        return max(self.stock_quantity, 0)
+
+    @property
+    def max_orderable(self):
+        if self.product.is_wysiwyg:
+            return min(1, self.available_quantity)
+        return self.available_quantity
+
+    @property
+    def is_on_sale(self):
+        return bool(self.compare_at_price and self.compare_at_price > self.price)
+
+    def can_fulfill(self, quantity):
+        if not self.track_inventory:
+            return True
+        return self.stock_quantity >= quantity
+
+    @property
+    def label_with_price(self):
+        return f"{self.name} — ${self.price}"
+
+
+class ProductVideo(models.Model):
+    """Video for a listing. Coral buyers judge movement, not just stills."""
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="videos"
+    )
+    title = models.CharField(max_length=140, blank=True)
+    url = models.URLField(
+        help_text="YouTube, Vimeo or a direct MP4 link.",
+    )
+    thumbnail = models.ImageField(upload_to="videos/", blank=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "pk"]
+
+    def __str__(self):
+        return self.title or f"Video for {self.product.name}"
+
+    @property
+    def embed_url(self):
+        """Normalise common share links into embeddable ones."""
+        url = self.url
+        if "youtube.com/watch?v=" in url:
+            return url.replace("watch?v=", "embed/").split("&")[0]
+        if "youtu.be/" in url:
+            return url.replace("youtu.be/", "www.youtube.com/embed/").split("?")[0]
+        if "vimeo.com/" in url and "player.vimeo.com" not in url:
+            video_id = url.rstrip("/").split("/")[-1].split("?")[0]
+            return f"https://player.vimeo.com/video/{video_id}"
+        return url
+
+    @property
+    def is_embed(self):
+        return "youtube" in self.url or "youtu.be" in self.url or "vimeo" in self.url
+
+
+class BundleItem(models.Model):
+    """A component of a frag pack.
+
+    Mystery boxes leave this empty -- the point is that the buyer does not know.
+    """
+
+    bundle = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="bundle_items",
+        limit_choices_to={"product_type": ProductType.BUNDLE},
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="in_bundles"
+    )
+    quantity = models.PositiveIntegerField(default=1)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "pk"]
+        unique_together = [("bundle", "product")]
+
+    def __str__(self):
+        return f"{self.bundle.name}: {self.quantity} × {self.product.name}"

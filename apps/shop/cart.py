@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from django.conf import settings
 
-from apps.catalog.models import Product
+from apps.catalog.models import Product, ProductVariant
 from apps.cms.models import SiteSettings
 from apps.shop.models import ZERO, quote_shipping
 
@@ -20,22 +20,43 @@ from apps.shop.models import ZERO, quote_shipping
 class CartLine:
     product: Product
     quantity: int
+    variant: ProductVariant = None
+
+    @property
+    def key(self):
+        return cart_key(self.product, self.variant)
+
+    @property
+    def label(self):
+        if self.variant:
+            return f"{self.product.name} ({self.variant.name})"
+        return self.product.name
 
     @property
     def unit_price(self):
-        return self.product.price
+        return self.variant.price if self.variant else self.product.price
 
     @property
     def line_total(self):
-        return (self.product.price * self.quantity).quantize(Decimal("0.01"))
+        return (self.unit_price * self.quantity).quantize(Decimal("0.01"))
 
     @property
     def over_stock(self):
-        return not self.product.can_fulfill(self.quantity)
+        return not self.product.can_fulfill(self.quantity, variant=self.variant)
 
     @property
     def available_quantity(self):
-        return self.product.max_orderable
+        return self.variant.max_orderable if self.variant else self.product.max_orderable
+
+
+def cart_key(product, variant=None):
+    """Session key for a line. Variants of one product are separate lines."""
+    return f"{product.pk}:{variant.pk}" if variant else str(product.pk)
+
+
+def parse_cart_key(key):
+    product_id, _, variant_id = key.partition(":")
+    return product_id, (variant_id or None)
 
 
 class Cart:
@@ -44,15 +65,18 @@ class Cart:
         self._items = self.session.setdefault(settings.CART_SESSION_KEY, {})
 
     # --- mutation --------------------------------------------------------
-    def add(self, product, quantity=1, *, replace=False):
+    def add(self, product, quantity=1, *, variant=None, replace=False):
         """Add to the cart, clamped to what we can actually ship.
 
-        Returns the quantity now in the cart for that product.
+        Returns the quantity now in the cart for that product/variant.
         """
-        key = str(product.pk)
+        if variant is None and product.has_variants:
+            # A bare add on a variant product takes the default option.
+            variant = product.default_variant
+        key = cart_key(product, variant)
         current = 0 if replace else self._items.get(key, 0)
-        desired = current + quantity if not replace else quantity
-        ceiling = product.max_orderable
+        desired = quantity if replace else current + quantity
+        ceiling = variant.max_orderable if variant else product.max_orderable
         final = max(0, min(desired, ceiling))
         if final == 0:
             self._items.pop(key, None)
@@ -61,11 +85,11 @@ class Cart:
         self._save()
         return final
 
-    def set_quantity(self, product, quantity):
-        return self.add(product, quantity, replace=True)
+    def set_quantity(self, product, quantity, variant=None):
+        return self.add(product, quantity, variant=variant, replace=True)
 
-    def remove(self, product):
-        self._items.pop(str(product.pk), None)
+    def remove(self, product, variant=None):
+        self._items.pop(cart_key(product, variant), None)
         self._save()
 
     def clear(self):
@@ -82,19 +106,34 @@ class Cart:
     def lines(self):
         if not self._items:
             return []
+        parsed = {key: parse_cart_key(key) for key in self._items}
+        product_ids = {pid for pid, _ in parsed.values()}
+        variant_ids = {vid for _, vid in parsed.values() if vid}
+
         products = {
             str(p.pk): p
-            for p in Product.objects.for_storefront().filter(pk__in=self._items.keys())
+            for p in Product.objects.for_storefront()
+            .prefetch_related("variants")
+            .filter(pk__in=product_ids)
         }
+        variants = {
+            str(v.pk): v
+            for v in ProductVariant.objects.filter(pk__in=variant_ids, is_active=True)
+        }
+
         lines = []
         stale = []
         for key, quantity in self._items.items():
-            product = products.get(key)
-            if product is None:
-                # Unpublished or deleted since it was added.
+            product_id, variant_id = parsed[key]
+            product = products.get(product_id)
+            variant = variants.get(variant_id) if variant_id else None
+            # Unpublished, deleted or deactivated since it was added.
+            if product is None or (variant_id and variant is None):
                 stale.append(key)
                 continue
-            lines.append(CartLine(product=product, quantity=quantity))
+            lines.append(
+                CartLine(product=product, quantity=quantity, variant=variant)
+            )
         if stale:
             for key in stale:
                 self._items.pop(key, None)
@@ -147,8 +186,8 @@ class Cart:
         """Clamp every line to available stock; returns the adjusted lines."""
         adjusted = []
         for line in self.lines:
-            ceiling = line.product.max_orderable
+            ceiling = line.available_quantity
             if line.quantity > ceiling:
-                self.set_quantity(line.product, ceiling)
+                self.set_quantity(line.product, ceiling, variant=line.variant)
                 adjusted.append((line.product, ceiling))
         return adjusted

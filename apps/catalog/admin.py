@@ -6,12 +6,15 @@ from django.utils.html import format_html
 from django.utils.timezone import now
 
 from apps.catalog.models import (
+    BundleItem,
     Category,
     Collection,
     CollectionItem,
     Product,
     ProductImage,
     ProductType,
+    ProductVariant,
+    ProductVideo,
     Tag,
 )
 
@@ -43,6 +46,31 @@ class ProductImageInline(admin.TabularInline):
     @admin.display(description="Preview")
     def preview(self, obj):
         return thumbnail(obj.image) if obj.pk else "—"
+
+
+class ProductVariantInline(admin.TabularInline):
+    model = ProductVariant
+    extra = 0
+    fields = (
+        "name", "sku", "price", "compare_at_price", "stock_quantity",
+        "pack_quantity", "is_default", "is_active", "sort_order",
+    )
+    readonly_fields = ("sku",)
+
+
+class ProductVideoInline(admin.TabularInline):
+    model = ProductVideo
+    extra = 0
+    fields = ("title", "url", "thumbnail", "sort_order")
+
+
+class BundleItemInline(admin.TabularInline):
+    model = BundleItem
+    fk_name = "bundle"
+    extra = 1
+    autocomplete_fields = ["product"]
+    verbose_name = "pack contents"
+    verbose_name_plural = "pack contents"
 
 
 class CollectionItemInline(admin.TabularInline):
@@ -139,7 +167,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ("name", "sku", "scientific_name", "tagline", "description")
     prepopulated_fields = {"slug": ("name",)}
     autocomplete_fields = ["category", "tags"]
-    inlines = [ProductImageInline]
+    inlines = [ProductImageInline, ProductVariantInline, ProductVideoInline, BundleItemInline]
     save_on_top = True
     list_per_page = 40
     date_hierarchy = "published_at"
@@ -199,6 +227,16 @@ class ProductAdmin(admin.ModelAdmin):
             },
         ),
         (
+            "Frag pack / bundle",
+            {
+                "fields": (("is_mystery", "bundle_size"),),
+                "classes": ("collapse",),
+                "description": "Only used when the product type is a bundle. "
+                "List the contents in the 'pack contents' rows below, or tick "
+                "mystery to keep them a surprise.",
+            },
+        ),
+        (
             "Merchandising",
             {"fields": (("status", "is_featured"), "badge", "published_at")},
         ),
@@ -221,6 +259,13 @@ class ProductAdmin(admin.ModelAdmin):
 
     @admin.display(description="Stock", ordering="stock_quantity")
     def stock_tag(self, obj):
+        if obj.has_variants:
+            total = obj.available_quantity
+            color = "#c33" if total == 0 else "#2a8"
+            return format_html(
+                '<b style="color:{}">{}</b> <span style="opacity:.7">in {} options</span>',
+                color, total, len(obj.sellable_variants),
+            )
         if not obj.track_inventory:
             return format_html('<span style="opacity:.7">untracked</span>')
         if obj.is_sold_out:
@@ -299,3 +344,14 @@ class CollectionAdmin(admin.ModelAdmin):
     @admin.display(description="Products")
     def item_count(self, obj):
         return obj.products.count()
+
+
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
+    """Standalone view for bulk stock edits across every option."""
+
+    list_display = ("product", "name", "sku", "price", "stock_quantity", "is_default", "is_active")
+    list_editable = ("price", "stock_quantity", "is_default", "is_active")
+    list_filter = ("is_active", "is_default", "product__product_type")
+    search_fields = ("product__name", "name", "sku")
+    autocomplete_fields = ["product"]
