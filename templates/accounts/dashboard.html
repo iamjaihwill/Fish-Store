@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}My account — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <h1>Hi, {{ request.user.first_name|default:request.user.email }}</h1>
+    {% include "accounts/_nav.html" %}
+  </header>
+  <div class="account-grid" style="margin-bottom:4rem">
+    <section class="panel">
+      <h2 style="font-size:1.05rem">Recent orders</h2>
+      {% for order in orders %}
+      <div class="summary-row">
+        <span><a href="{% url 'shop:order_detail' order.number %}">{{ order.number }}</a> · {{ order.created_at|date:"M j, Y" }}</span>
+        <span>{{ order.get_status_display }} · ${{ order.grand_total }}</span>
+      </div>
+      {% empty %}
+      <p class="muted small">No orders yet. <a href="{% url 'catalog:shop' %}">Go find something that glows.</a></p>
+      {% endfor %}
+      {% if orders %}<p style="margin-top:1rem"><a class="btn btn-ghost" href="{% url 'accounts:orders' %}">All orders</a></p>{% endif %}
+    </section>
+    <aside class="summary">
+      <h2 style="font-size:1.05rem">Account</h2>
+      <div class="summary-row"><span>Email</span><span>{{ request.user.email }}</span></div>
+      <div class="summary-row"><span>Wishlist</span><span>{{ wishlist_count }} saved</span></div>
+      <div class="summary-row"><span>Tier</span><span>{{ customer.get_tier_display }}{% if customer.tier == 'wholesale' and not customer.is_wholesale %} (pending){% endif %}</span></div>
+      {% if address %}
+      <p class="small muted" style="margin-top:1rem"><strong>Default address</strong><br>
+        {{ address.address_line1 }}<br>{{ address.city }}, {{ address.state }} {{ address.postal_code }}</p>
+      {% else %}
+      <p class="small muted" style="margin-top:1rem"><a href="{% url 'accounts:address_new' %}">Add a shipping address</a></p>
+      {% endif %}
+    </aside>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Profile — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:640px">
+  <header class="page-header"><h1>Profile</h1>{% include "accounts/_nav.html" %}</header>
+  <form method="post" class="panel">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field">{{ form.first_name.label_tag }}{{ form.first_name }}{{ form.first_name.errors }}</div>
+      <div class="field">{{ form.last_name.label_tag }}{{ form.last_name }}{{ form.last_name.errors }}</div>
+      <div class="field full">{{ form.phone.label_tag }}{{ form.phone }}</div>
+      <div class="field full checkbox-field">{{ form.accepts_marketing }}<label for="{{ form.accepts_marketing.id_for_label }}">Send me drop announcements</label></div>
+    </div>
+    <button class="btn btn-primary" type="submit" style="margin-top:1rem">Save</button>
+  </form>
+  <p class="muted small" style="margin:1.25rem 0 4rem"><a href="{% url 'accounts:password_change' %}">Change password</a></p>
+</div>
+{% endblock %}

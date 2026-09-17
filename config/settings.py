@@ -31,6 +31,7 @@ CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "apps.core",
+    "apps.accounts",
     "apps.catalog",
     "apps.cms",
     "apps.shop",
@@ -72,6 +73,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.cms.context_processors.site_chrome",
                 "apps.shop.context_processors.cart",
+                "apps.accounts.context_processors.account",
             ],
         },
     },
@@ -116,7 +118,9 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LOGIN_URL = "admin:login"
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "accounts:dashboard"
+LOGOUT_REDIRECT_URL = "cms:home"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 

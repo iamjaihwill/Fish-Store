@@ -44,6 +44,14 @@ class Order(models.Model):
     )
 
     # Customer
+    customer = models.ForeignKey(
+        "accounts.Customer",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="linked_orders",
+        help_text="Set when the order was placed by a signed-in account.",
+    )
     email = models.EmailField()
     first_name = models.CharField(max_length=80)
     last_name = models.CharField(max_length=80)

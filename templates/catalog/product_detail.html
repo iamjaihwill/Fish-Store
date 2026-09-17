@@ -56,8 +56,15 @@
 
       <div class="buy-box">
         {% if product.is_sold_out %}
-          <p><strong>Sold out.</strong> {% if product.is_wysiwyg %}This was a one-of-a-kind piece — browse similar corals below.{% else %}Join the drop list and we'll tell you when it's back.{% endif %}</p>
-          <a class="btn btn-ghost btn-block" href="{{ product.category.get_absolute_url }}">Browse {{ product.category.name }}</a>
+          <p><strong>Sold out.</strong> {% if product.is_wysiwyg %}This was a one-of-a-kind piece — browse similar corals below.{% else %}Save it and we'll email you the moment it's back.{% endif %}</p>
+          {% if not product.is_wysiwyg %}
+          <form method="post" action="{% url 'accounts:wishlist_toggle' product.slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="btn btn-coral btn-block" type="submit">Notify me when it's back</button>
+          </form>
+          {% endif %}
+          <a class="btn btn-ghost btn-block" href="{{ product.category.get_absolute_url }}" style="margin-top:.6rem">Browse {{ product.category.name }}</a>
         {% else %}
           <form method="post" action="{% url 'shop:add_to_cart' product.slug %}">
             {% csrf_token %}
@@ -73,6 +80,13 @@
               {% if product.is_low_stock %}<span class="stock-note">Only {{ product.stock_quantity }} left</span>{% endif %}
             </div>
             <button class="btn btn-primary btn-block" type="submit">Add to cart</button>
+          </form>
+          <form method="post" action="{% url 'accounts:wishlist_toggle' product.slug %}" style="margin-top:.6rem">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="btn btn-ghost btn-block" type="submit">
+              {% if is_wishlisted %}♥ Saved to wishlist{% else %}♡ Save to wishlist{% endif %}
+            </button>
           </form>
         {% endif %}
 

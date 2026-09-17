@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Wishlist — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <h1>Wishlist</h1>
+    <p class="muted">Saved corals, fish and gear. We'll email you when a sold-out favourite comes back.</p>
+    {% include "accounts/_nav.html" %}
+  </header>
+  {% if items %}
+  <form method="post" action="{% url 'accounts:wishlist_add_all' %}" style="margin-bottom:1.5rem">
+    {% csrf_token %}
+    <button class="btn btn-primary" type="submit">Add everything available to cart</button>
+  </form>
+  <div class="product-grid" style="margin-bottom:4rem">
+    {% for item in items %}{% with product=item.product %}{% include "partials/product_card.html" %}{% endwith %}{% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state" style="margin-bottom:4rem">
+    <h2>Nothing saved yet</h2>
+    <p class="muted">Tap the heart on any listing to keep an eye on it.</p>
+    <a class="btn btn-primary" href="{% url 'catalog:shop' %}">Browse the reef</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

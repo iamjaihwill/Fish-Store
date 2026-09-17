@@ -179,10 +179,23 @@ def product_detail(request, slug):
         .filter(category=product.category)
         .exclude(pk=product.pk)[:4]
     )
+    is_wishlisted = False
+    if request.user.is_authenticated:
+        from apps.accounts.models import WishlistItem
+
+        is_wishlisted = WishlistItem.objects.filter(
+            customer__user=request.user, product=product
+        ).exists()
+
     return render(
         request,
         "catalog/product_detail.html",
-        {"product": product, "related": related, "images": list(product.images.all())},
+        {
+            "product": product,
+            "related": related,
+            "images": list(product.images.all()),
+            "is_wishlisted": is_wishlisted,
+        },
     )
 
 

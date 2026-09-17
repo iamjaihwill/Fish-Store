@@ -21,7 +21,7 @@ class OutOfStock(Exception):
 
 
 @transaction.atomic
-def place_order(cart, details):
+def place_order(cart, details, customer=None):
     """Create an order from ``cart``.
 
     Inventory is locked and decremented inside the transaction, so two people
@@ -34,6 +34,7 @@ def place_order(cart, details):
 
     settings_obj = SiteSettings.load()
     order = Order(
+        customer=customer,
         email=details["email"],
         first_name=details["first_name"],
         last_name=details["last_name"],

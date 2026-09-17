@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Wholesale — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:640px">
+  <header class="page-header">
+    <h1>Wholesale</h1>
+    <p class="muted">Shops and installers buy frags at trade pricing. Approval takes about two business days.</p>
+    {% include "accounts/_nav.html" %}
+  </header>
+  {% if customer.is_wholesale %}
+  <div class="panel" style="margin-bottom:4rem">
+    <h2 style="font-size:1.05rem">Wholesale account active</h2>
+    <p class="muted small">Trade pricing is applied automatically at checkout for {{ customer.wholesale_company }}.</p>
+  </div>
+  {% else %}
+  {% if customer.tier == 'wholesale' %}<div class="flash flash-warning">Your application is under review.</div>{% endif %}
+  <form method="post" class="panel" style="margin-bottom:4rem">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field full">{{ form.wholesale_company.label_tag }}{{ form.wholesale_company }}{{ form.wholesale_company.errors }}</div>
+      <div class="field full">{{ form.wholesale_tax_id.label_tag }}{{ form.wholesale_tax_id }}{{ form.wholesale_tax_id.errors }}</div>
+    </div>
+    <button class="btn btn-primary" type="submit" style="margin-top:1rem">Apply for wholesale</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

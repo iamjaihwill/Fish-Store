@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}My orders — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header"><h1>Orders</h1>{% include "accounts/_nav.html" %}</header>
+  <div style="margin-bottom:4rem">
+    {% for order in orders %}
+    <section class="panel" style="margin-bottom:1rem">
+      <div class="summary-row" style="font-size:1rem">
+        <span><strong><a href="{% url 'shop:order_detail' order.number %}">{{ order.number }}</a></strong> · {{ order.created_at|date:"F j, Y" }}</span>
+        <span class="chip">{{ order.get_status_display }}</span>
+      </div>
+      {% for item in order.items.all %}
+      <div class="summary-row small"><span>{{ item.quantity }} × {{ item.name }}</span><span>${{ item.line_total }}</span></div>
+      {% endfor %}
+      <div class="summary-row summary-total"><span>Total</span><span>${{ order.grand_total }}</span></div>
+    </section>
+    {% empty %}
+    <div class="empty-state"><h2>No orders yet</h2><a class="btn btn-primary" href="{% url 'catalog:shop' %}">Start shopping</a></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

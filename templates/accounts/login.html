@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Sign in — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:460px">
+  <header class="page-header"><h1>Sign in</h1></header>
+  <form method="post" class="panel">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="flash flash-error">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="field"><label for="{{ form.username.id_for_label }}">Email</label>{{ form.username }}</div>
+    <div class="field" style="margin-top:1rem"><label for="{{ form.password.id_for_label }}">Password</label>{{ form.password }}</div>
+    <button class="btn btn-primary btn-block" type="submit" style="margin-top:1.25rem">Sign in</button>
+  </form>
+  <p class="center muted small" style="margin:1.25rem 0 4rem">
+    New here? <a href="{% url 'accounts:register' %}">Create an account</a> ·
+    <a href="{% url 'shop:order_lookup' %}">Track a guest order</a>
+  </p>
+</div>
+{% endblock %}

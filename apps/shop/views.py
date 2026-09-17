@@ -103,11 +103,17 @@ def checkout(request):
         return redirect("catalog:shop")
 
     requires_terms = cart.contains_livestock
+    customer = None
+    if request.user.is_authenticated:
+        from apps.accounts.views import get_customer
+
+        customer = get_customer(request)
+
     if request.method == "POST":
         form = CheckoutForm(request.POST, requires_livestock_terms=requires_terms)
         if form.is_valid():
             try:
-                order = place_order(cart, form.cleaned_data)
+                order = place_order(cart, form.cleaned_data, customer=customer)
             except OutOfStock as exc:
                 messages.error(
                     request,
@@ -121,12 +127,27 @@ def checkout(request):
             request.session[ORDER_SESSION_KEY] = [order.number, *recent][:10]
             return redirect("shop:order_confirmation", number=order.number)
     else:
-        form = CheckoutForm(requires_livestock_terms=requires_terms)
+        initial = {}
+        if customer:
+            initial["email"] = request.user.email
+            address = customer.default_address()
+            if address:
+                initial.update(address.as_checkout_initial())
+            else:
+                initial["first_name"] = request.user.first_name
+                initial["last_name"] = request.user.last_name
+                initial["phone"] = customer.phone
+        form = CheckoutForm(initial=initial, requires_livestock_terms=requires_terms)
 
     return render(
         request,
         "shop/checkout.html",
-        {"cart": cart, "form": form, "requires_terms": requires_terms},
+        {
+            "cart": cart,
+            "form": form,
+            "requires_terms": requires_terms,
+            "customer": customer,
+        },
     )
 
 

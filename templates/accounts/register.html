@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Create an account — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:620px">
+  <header class="page-header">
+    <h1>Create an account</h1>
+    <p class="muted">Track orders, save corals, and start earning reward points. Past guest orders on this email are linked automatically.</p>
+  </header>
+  <form method="post" class="panel" style="margin-bottom:4rem">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="flash flash-error">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="form-grid">
+      <div class="field">{{ form.first_name.label_tag }}{{ form.first_name }}{{ form.first_name.errors }}</div>
+      <div class="field">{{ form.last_name.label_tag }}{{ form.last_name }}{{ form.last_name.errors }}</div>
+      <div class="field full">{{ form.email.label_tag }}{{ form.email }}{{ form.email.errors }}</div>
+      <div class="field full">{{ form.phone.label_tag }}{{ form.phone }}</div>
+      <div class="field full">{{ form.password1.label_tag }}{{ form.password1 }}<span class="helptext">{{ form.password1.help_text|safe }}</span>{{ form.password1.errors }}</div>
+      <div class="field full">{{ form.password2.label_tag }}{{ form.password2 }}{{ form.password2.errors }}</div>
+      <div class="field full checkbox-field">{{ form.accepts_marketing }}<label for="{{ form.accepts_marketing.id_for_label }}">{{ form.accepts_marketing.label }}</label></div>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit" style="margin-top:1rem">Create account</button>
+  </form>
+</div>
+{% endblock %}
