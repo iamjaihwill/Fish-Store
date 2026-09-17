@@ -1,0 +1,22 @@
+{% load static humanize %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ site.store_name }}{% endblock %}</title>
+<meta name="description" content="{% block meta_description %}{{ site.tagline }}{% endblock %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="{% static 'css/site.css' %}">
+<link rel="icon" href="{% static 'img/favicon.svg' %}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% include "partials/announcement.html" %}
+{% include "partials/header.html" %}
+{% include "partials/messages.html" %}
+<main id="main">
+  {% block content %}{% endblock %}
+</main>
+{% include "partials/footer.html" %}
+<script src="{% static 'js/site.js' %}" defer></script>
+</body>
+</html>

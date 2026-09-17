@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order.number }} — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <div class="breadcrumbs"><a href="{% url 'shop:order_lookup' %}">Orders</a> / <span>{{ order.number }}</span></div>
+    <h1>Order {{ order.number }}</h1>
+    <p class="muted">Placed {{ order.created_at|date:"F j, Y" }} · {{ order.get_status_display }}</p>
+  </header>
+  {% include "shop/_order_body.html" %}
+  <div style="margin:2rem 0 4rem"><a class="btn btn-ghost" href="{% url 'cms:contact' %}">Question about this order?</a></div>
+</div>
+{% endblock %}

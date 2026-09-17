@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}FAQ — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:860px">
+  <header class="page-header">
+    <h1>Frequently asked</h1>
+    <p class="muted">Shipping, arrival, acclimation and everything else people write in about.</p>
+  </header>
+  {% for topic, items in grouped.items %}
+  <section class="section" style="margin:2rem 0">
+    <h2 style="font-size:1.2rem">{{ topic }}</h2>
+    <div class="accordion">
+      {% for item in items %}
+      <details {% if forloop.first and forloop.parentloop.first %}open{% endif %}>
+        <summary>{{ item.question }}</summary>
+        <div class="accordion-body">{{ item.answer_html }}</div>
+      </details>
+      {% endfor %}
+    </div>
+  </section>
+  {% empty %}
+  <div class="empty-state"><p class="muted">No questions published yet.</p></div>
+  {% endfor %}
+  <p style="margin-bottom:4rem"><a class="btn btn-ghost" href="{% url 'cms:contact' %}">Still stuck? Ask us</a></p>
+</div>
+{% endblock %}

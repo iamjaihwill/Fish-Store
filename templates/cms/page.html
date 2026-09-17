@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ page.seo_title|default:page.title }} — {{ site.store_name }}{% endblock %}
+{% block meta_description %}{{ page.seo_description|default:page.summary }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  {% if page.hero_image %}
+  <div class="hero-slide" style="min-height:280px;margin-top:1.25rem">
+    <img class="hero-bg" src="{{ page.hero_image.url }}" alt="">
+    <div class="hero-copy"><h1>{{ page.title }}</h1>{% if page.summary %}<p>{{ page.summary }}</p>{% endif %}</div>
+  </div>
+  {% else %}
+  <header class="page-header">
+    <div class="breadcrumbs"><a href="{% url 'cms:home' %}">Home</a> / <span>{{ page.title }}</span></div>
+    <h1>{{ page.title }}</h1>
+    {% if page.summary %}<p class="muted">{{ page.summary }}</p>{% endif %}
+  </header>
+  {% endif %}
+  <div class="prose" style="margin:2rem 0 4rem">{{ page.body_html }}</div>
+</div>
+{% endblock %}

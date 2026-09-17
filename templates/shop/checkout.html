@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Checkout — {{ site.store_name }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <header class="page-header"><h1>Checkout</h1></header>
+
+  <form method="post" class="cart-layout" novalidate>
+    {% csrf_token %}
+    <div>
+      {% if form.non_field_errors %}<div class="flash flash-error">{{ form.non_field_errors }}</div>{% endif %}
+
+      <section class="panel">
+        <h2 style="font-size:1.1rem">Contact</h2>
+        <div class="form-grid">
+          <div class="field full">{{ form.email.label_tag }}{{ form.email }}{{ form.email.errors }}</div>
+          <div class="field">{{ form.first_name.label_tag }}{{ form.first_name }}{{ form.first_name.errors }}</div>
+          <div class="field">{{ form.last_name.label_tag }}{{ form.last_name }}{{ form.last_name.errors }}</div>
+          <div class="field full">
+            {{ form.phone.label_tag }}{{ form.phone }}
+            <span class="helptext">{{ form.phone.help_text }}</span>{{ form.phone.errors }}
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 style="font-size:1.1rem">Ship to</h2>
+        <div class="form-grid">
+          <div class="field full">{{ form.address_line1.label_tag }}{{ form.address_line1 }}{{ form.address_line1.errors }}</div>
+          <div class="field full">{{ form.address_line2.label_tag }}{{ form.address_line2 }}</div>
+          <div class="field">{{ form.city.label_tag }}{{ form.city }}{{ form.city.errors }}</div>
+          <div class="field">{{ form.state.label_tag }}{{ form.state }}{{ form.state.errors }}</div>
+          <div class="field">{{ form.postal_code.label_tag }}{{ form.postal_code }}{{ form.postal_code.errors }}</div>
+          <div class="field">{{ form.country.label_tag }}{{ form.country }}</div>
+        </div>
+      </section>
+
+      {% if requires_terms %}
+      <section class="panel">
+        <h2 style="font-size:1.1rem">Livestock delivery</h2>
+        <p class="muted small">
+          We ship livestock overnight {{ site.shipping_days }}. Someone must be present to receive the box —
+          a coral left on a porch is a coral we cannot guarantee.
+        </p>
+        <div class="form-grid">
+          <div class="field">
+            {{ form.requested_ship_date.label_tag }}{{ form.requested_ship_date }}
+            <span class="helptext">{{ form.requested_ship_date.help_text }}</span>{{ form.requested_ship_date.errors }}
+          </div>
+          <div class="field checkbox-field" style="align-items:center">
+            {{ form.hold_for_weather }}{{ form.hold_for_weather.label_tag }}
+          </div>
+          <div class="field full checkbox-field">
+            {{ form.accepts_livestock_terms }}
+            <label for="{{ form.accepts_livestock_terms.id_for_label }}">{{ form.accepts_livestock_terms.label }}</label>
+          </div>
+          {% if form.accepts_livestock_terms.errors %}<div class="field full">{{ form.accepts_livestock_terms.errors }}</div>{% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      <section class="panel">
+        <h2 style="font-size:1.1rem">Order notes</h2>
+        <div class="field">{{ form.customer_notes }}</div>
+      </section>
+    </div>
+
+    <aside class="summary">
+      <h2 style="font-size:1.15rem">Your order</h2>
+      {% for line in cart %}
+      <div class="summary-row">
+        <span>{{ line.quantity }} × {{ line.product.name|truncatechars:28 }}</span>
+        <span>${{ line.line_total }}</span>
+      </div>
+      {% endfor %}
+      <div class="summary-row" style="border-top:1px solid var(--line);margin-top:.5rem;padding-top:.7rem">
+        <span>Subtotal</span><span>${{ cart.subtotal }}</span>
+      </div>
+      <div class="summary-row">
+        <span>Shipping</span>
+        <span>{% if cart.shipping_total %}${{ cart.shipping_total }}{% else %}Free{% endif %}</span>
+      </div>
+      {% if cart.tax_total %}<div class="summary-row"><span>Tax</span><span>${{ cart.tax_total }}</span></div>{% endif %}
+      <div class="summary-row summary-total"><span>Total</span><span>${{ cart.grand_total }}</span></div>
+      <button class="btn btn-primary btn-block" type="submit" style="margin-top:1rem">Place order</button>
+      <p class="small muted center" style="margin-top:.8rem">
+        We invoice for payment after the order is reviewed — nothing is charged on this screen.
+      </p>
+    </aside>
+  </form>
+</div>
+{% endblock %}

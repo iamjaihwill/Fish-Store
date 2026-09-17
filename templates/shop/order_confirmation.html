@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order.number }} — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <span class="eyebrow">Order received</span>
+    <h1>Thanks, {{ order.first_name }}.</h1>
+    <p class="muted">
+      Your order number is <strong>{{ order.number }}</strong>. A confirmation is on its way to {{ order.email }}.
+    </p>
+  </header>
+  {% include "shop/_order_body.html" %}
+  <p style="margin:2rem 0 4rem">
+    <a class="btn btn-ghost" href="{% url 'catalog:shop' %}">Keep shopping</a>
+    <a class="btn btn-primary" href="{% url 'shop:order_detail' order.number %}">Track this order</a>
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} — {{ site.store_name }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <div class="breadcrumbs">
+      <a href="{% url 'cms:home' %}">Home</a> / <span>{{ heading }}</span>
+    </div>
+    <h1>{{ heading }}</h1>
+    {% if subheading %}<p class="muted">{{ subheading }}</p>{% endif %}
+  </header>
+
+  <div class="shop-layout">
+    <form class="filters" id="filters" method="get" action="">
+      {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
+      {% if filters.tag %}<input type="hidden" name="tag" value="{{ filters.tag }}">{% endif %}
+
+      <div class="filter-group">
+        <h3>Type</h3>
+        <label><input type="radio" name="type" value="" {% if not filters.type %}checked{% endif %}> All</label>
+        {% for value, label in choices.types %}
+        <label><input type="radio" name="type" value="{{ value }}" {% if filters.type == value %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+
+      <div class="filter-group">
+        <h3>Care level</h3>
+        {% for value, label in choices.care %}
+        <label><input type="checkbox" name="care" value="{{ value }}" {% if value in filters.care %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+
+      <div class="filter-group">
+        <h3>Lighting</h3>
+        {% for value, label in choices.lighting %}
+        <label><input type="checkbox" name="lighting" value="{{ value }}" {% if value in filters.lighting %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+
+      <div class="filter-group">
+        <h3>Flow</h3>
+        {% for value, label in choices.flow %}
+        <label><input type="checkbox" name="flow" value="{{ value }}" {% if value in filters.flow %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+
+      <div class="filter-group">
+        <h3>Price</h3>
+        <div class="price-row">
+          <input type="number" name="min_price" min="0" step="1" placeholder="Min" value="{{ filters.min_price }}">
+          <input type="number" name="max_price" min="0" step="1" placeholder="Max" value="{{ filters.max_price }}">
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <h3>Show only</h3>
+        <label><input type="checkbox" name="wysiwyg" value="1" {% if filters.wysiwyg %}checked{% endif %}> WYSIWYG pieces</label>
+        <label><input type="checkbox" name="sale" value="1" {% if filters.sale %}checked{% endif %}> On sale</label>
+        <label><input type="checkbox" name="aquacultured" value="1" {% if filters.aquacultured %}checked{% endif %}> Aquacultured</label>
+        <label><input type="checkbox" name="in_stock" value="1" {% if filters.in_stock %}checked{% endif %}> In stock</label>
+      </div>
+
+      <input type="hidden" name="sort" value="{{ filters.sort }}">
+      <div class="filter-group">
+        <button class="btn btn-primary btn-block" type="submit">Apply filters</button>
+        <p class="center small" style="margin:.7rem 0 0"><a href="{{ request.path }}">Clear all</a></p>
+      </div>
+    </form>
+
+    <div>
+      <div class="shop-toolbar">
+        <div>
+          <button class="btn btn-ghost filters-toggle" type="button" data-toggle-filters>Filters</button>
+          <span class="muted small">{{ total_count }} item{{ total_count|pluralize }}</span>
+        </div>
+        <form method="get" action="">
+          {% for key, value in request.GET.lists %}
+            {% if key != "sort" and key != "page" %}
+              {% for item in value %}<input type="hidden" name="{{ key }}" value="{{ item }}">{% endfor %}
+            {% endif %}
+          {% endfor %}
+          <label class="muted small" for="sort">Sort</label>
+          <select name="sort" id="sort" data-autosubmit>
+            {% for value, label in choices.sorts %}
+            <option value="{{ value }}" {% if filters.sort == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <noscript><button class="btn btn-ghost" type="submit">Go</button></noscript>
+        </form>
+      </div>
+
+      {% if products %}
+      <div class="product-grid">
+        {% for product in products %}{% include "partials/product_card.html" %}{% endfor %}
+      </div>
+      {% include "partials/pagination.html" %}
+      {% else %}
+      <div class="empty-state">
+        <h2>Nothing matches those filters</h2>
+        <p class="muted">Try widening the price range or clearing a care filter.</p>
+        <a class="btn btn-ghost" href="{{ request.path }}">Clear filters</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

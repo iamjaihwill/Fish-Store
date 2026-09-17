@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Live sales — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <span class="eyebrow">Drops &amp; streams</span>
+    <h1>Live sales</h1>
+    <p class="muted">We frag on camera, you claim in chat. Everything sold live ships on the next available day.</p>
+  </header>
+
+  {% for event in upcoming %}
+  <div class="event-card" style="margin-bottom:1.5rem">
+    {% if event.image %}<img src="{{ event.image.url }}" alt="">{% endif %}
+    <div class="event-body">
+      <span class="eyebrow">{{ event.starts_at|date:"l, F j · g:i a" }}</span>
+      <h2>{{ event.title }}</h2>
+      <p class="muted">{{ event.description }}</p>
+      <div class="countdown" data-countdown="{{ event.starts_at|date:'c' }}">
+        <div><b data-unit="days">–</b><span>days</span></div>
+        <div><b data-unit="hours">–</b><span>hrs</span></div>
+        <div><b data-unit="minutes">–</b><span>min</span></div>
+        <div><b data-unit="seconds">–</b><span>sec</span></div>
+      </div>
+      <div class="hero-actions">
+        {% if event.stream_url %}<a class="btn btn-coral" href="{{ event.stream_url }}">Set a reminder</a>{% endif %}
+        {% if event.collection %}<a class="btn btn-ghost" href="{{ event.collection.get_absolute_url }}">Preview the lot</a>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="empty-state">
+    <h2>No live sale on the calendar</h2>
+    <p class="muted">Join the drop list and we'll announce the next one first.</p>
+  </div>
+  {% endfor %}
+
+  {% if past %}
+  <section class="section" style="margin-bottom:4rem">
+    <div class="section-head"><h2>Past drops</h2></div>
+    <div class="category-grid">
+      {% for event in past %}
+      <div class="panel">
+        <span class="eyebrow">{{ event.starts_at|date:"M j, Y" }}</span>
+        <h3>{{ event.title }}</h3>
+        <p class="muted small">{{ event.description|truncatewords:20 }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

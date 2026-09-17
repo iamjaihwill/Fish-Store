@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ product.name }} — {{ site.store_name }}{% endblock %}
+{% block meta_description %}{{ product.tagline|default:product.description|truncatewords:25 }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="breadcrumbs" style="padding-top:1.5rem">
+    <a href="{% url 'cms:home' %}">Home</a> /
+    <a href="{{ product.category.get_absolute_url }}">{{ product.category.name }}</a> /
+    <span>{{ product.name }}</span>
+  </div>
+
+  <div class="product-layout">
+    <div class="gallery">
+      <div class="gallery-main">
+        {% if product.is_sold_out %}<div class="sold-out-veil">Sold out</div>{% endif %}
+        <div class="badges">
+          {% if product.is_wysiwyg %}<span class="badge badge-wysiwyg">WYSIWYG</span>{% endif %}
+          {% if product.is_on_sale %}<span class="badge badge-sale">Save ${{ product.savings }}</span>{% endif %}
+          {% if product.is_aquacultured %}<span class="badge badge-aqua">Aquacultured</span>{% endif %}
+        </div>
+        {% with image=product.primary_image %}
+        <img id="gallery-main-image"
+             src="{% if image %}{{ image.image.url }}{% else %}{% static 'img/placeholder.svg' %}{% endif %}"
+             alt="{{ product.name }}">
+        {% endwith %}
+      </div>
+      {% if images|length > 1 %}
+      <div class="gallery-thumbs" data-gallery>
+        {% for image in images %}
+        <button type="button" data-src="{{ image.image.url }}" data-caption="{{ image.caption }}"
+                aria-current="{% if forloop.first %}true{% else %}false{% endif %}">
+          <img src="{{ image.image.url }}" alt="{{ image.alt_text|default:product.name }}" loading="lazy">
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% with first=product.primary_image %}
+        {% if first.caption %}<p class="image-caption" id="gallery-caption">{{ first.caption }}</p>{% endif %}
+      {% endwith %}
+      {% if product.is_wysiwyg %}
+      <p class="image-caption">This is the exact specimen you will receive, photographed in our display system under standard reef lighting. Colors may shift slightly as it settles into your tank.</p>
+      {% endif %}
+    </div>
+
+    <div class="product-meta">
+      <h1>{{ product.name }}</h1>
+      {% if product.scientific_name %}<p class="card-sci">{{ product.scientific_name }}</p>{% endif %}
+      {% if product.tagline %}<p class="muted">{{ product.tagline }}</p>{% endif %}
+
+      <div class="price-line">
+        <span class="price">${{ product.price }}</span>
+        {% if product.is_on_sale %}<span class="price-was">${{ product.compare_at_price }}</span>{% endif %}
+      </div>
+
+      <div class="buy-box">
+        {% if product.is_sold_out %}
+          <p><strong>Sold out.</strong> {% if product.is_wysiwyg %}This was a one-of-a-kind piece — browse similar corals below.{% else %}Join the drop list and we'll tell you when it's back.{% endif %}</p>
+          <a class="btn btn-ghost btn-block" href="{{ product.category.get_absolute_url }}">Browse {{ product.category.name }}</a>
+        {% else %}
+          <form method="post" action="{% url 'shop:add_to_cart' product.slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <div class="qty-row">
+              {% if product.is_wysiwyg %}
+                <input type="hidden" name="quantity" value="1">
+                <span class="chip">One of one</span>
+              {% else %}
+                <label for="quantity" class="muted small">Qty</label>
+                <input type="number" id="quantity" name="quantity" value="1" min="1" max="{{ product.max_orderable }}">
+              {% endif %}
+              {% if product.is_low_stock %}<span class="stock-note">Only {{ product.stock_quantity }} left</span>{% endif %}
+            </div>
+            <button class="btn btn-primary btn-block" type="submit">Add to cart</button>
+          </form>
+        {% endif %}
+
+        {% if product.is_livestock %}
+        <p class="muted small" style="margin:.9rem 0 0">
+          Ships overnight {{ site.shipping_days }} · {{ site.guarantee_headline }} included
+        </p>
+        {% endif %}
+      </div>
+
+      {% if product.care_facts %}
+      <h2 style="font-size:1.05rem">Care requirements</h2>
+      <table class="care-table">
+        {% for label, value in product.care_facts %}
+        <tr><th scope="row">{{ label }}</th><td>{{ value }}</td></tr>
+        {% endfor %}
+        {% if product.is_captive_bred %}<tr><th scope="row">Origin</th><td>Captive bred</td></tr>
+        {% elif product.is_aquacultured %}<tr><th scope="row">Origin</th><td>Aquacultured</td></tr>{% endif %}
+        <tr><th scope="row">SKU</th><td>{{ product.sku }}</td></tr>
+      </table>
+      {% endif %}
+
+      {% if product.description %}
+      <div class="prose">{{ product.description|linebreaks }}</div>
+      {% endif %}
+
+      <div class="accordion">
+        {% if product.acclimation_notes %}
+        <details open>
+          <summary>Acclimation</summary>
+          <div class="accordion-body">{{ product.acclimation_notes|linebreaks }}</div>
+        </details>
+        {% endif %}
+        {% if product.is_livestock %}
+        <details>
+          <summary>{{ site.guarantee_headline }}</summary>
+          <div class="accordion-body">
+            {{ site.guarantee_blurb }} Photograph any animal in distress in the bag it arrived in and file a claim
+            from your order page within 8 hours of delivery.
+          </div>
+        </details>
+        {% endif %}
+        <details>
+          <summary>Shipping</summary>
+          <div class="accordion-body">
+            {% if product.is_livestock %}
+              Livestock departs {{ site.shipping_days }} via overnight service. Free on orders over
+              ${{ site.free_shipping_threshold|floatformat:0 }}, otherwise ${{ site.livestock_shipping_rate|floatformat:0 }} flat.
+              We hold boxes when temperatures at either end are unsafe.
+            {% else %}
+              Dry goods ship within one business day at ${{ site.drygoods_shipping_rate|floatformat:0 }} flat,
+              free over ${{ site.free_shipping_threshold|floatformat:0 }}.
+            {% endif %}
+          </div>
+        </details>
+      </div>
+
+      {% if product.tags.all %}
+      <div class="care-chips" style="margin-top:1.25rem">
+        {% for tag in product.tags.all %}<a class="chip" href="{{ tag.get_absolute_url }}">{{ tag.name }}</a>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if related %}
+  <section class="section">
+    <div class="section-head"><h2>You might also like</h2></div>
+    <div class="product-grid">
+      {% for product in related %}{% include "partials/product_card.html" %}{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

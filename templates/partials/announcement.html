@@ -1,0 +1,6 @@
+{% if site.announcement_enabled and site.announcement_text %}
+<div class="announce">
+  {% if site.announcement_url %}<a href="{{ site.announcement_url }}">{{ site.announcement_text }}</a>
+  {% else %}<span>{{ site.announcement_text }}</span>{% endif %}
+</div>
+{% endif %}

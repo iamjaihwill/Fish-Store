@@ -1,0 +1,47 @@
+{% load static %}
+<article class="card">
+  <a class="card-media" href="{{ product.get_absolute_url }}">
+    <div class="badges">
+      {% if product.is_wysiwyg %}<span class="badge badge-wysiwyg">WYSIWYG</span>{% endif %}
+      {% if product.is_on_sale %}<span class="badge badge-sale">-{{ product.discount_percent }}%</span>{% endif %}
+      {% if product.is_aquacultured %}<span class="badge badge-aqua">Aquacultured</span>{% endif %}
+      {% if product.badge %}<span class="badge badge-custom">{{ product.badge }}</span>{% endif %}
+    </div>
+    {% if product.is_sold_out %}<div class="sold-out-veil">Sold out</div>{% endif %}
+    {% with image=product.primary_image %}
+      {% if image %}
+        <img src="{{ image.image.url }}" alt="{{ image.alt_text|default:product.name }}" loading="lazy">
+      {% else %}
+        <img src="{% static 'img/placeholder.svg' %}" alt="{{ product.name }}" loading="lazy">
+      {% endif %}
+    {% endwith %}
+  </a>
+  <div class="card-body">
+    <h3 class="card-title"><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h3>
+    {% if product.scientific_name %}<span class="card-sci">{{ product.scientific_name }}</span>{% endif %}
+    {% if product.care_level or product.lighting or product.flow %}
+    <div class="care-chips">
+      {% if product.care_level %}<span class="chip">{{ product.get_care_level_display }}</span>{% endif %}
+      {% if product.lighting %}<span class="chip">{{ product.get_lighting_display }} light</span>{% endif %}
+      {% if product.flow %}<span class="chip">{{ product.get_flow_display }} flow</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if product.is_low_stock %}<span class="stock-note">Only {{ product.stock_quantity }} left</span>{% endif %}
+    <div class="card-price">
+      <span class="price">${{ product.price }}</span>
+      {% if product.is_on_sale %}<span class="price-was">${{ product.compare_at_price }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="card-actions">
+    {% if product.is_sold_out %}
+      <a class="btn btn-ghost btn-block" href="{{ product.get_absolute_url }}">View details</a>
+    {% else %}
+      <form method="post" action="{% url 'shop:add_to_cart' product.slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="quantity" value="1">
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button class="btn btn-primary btn-block" type="submit">Add to cart</button>
+      </form>
+    {% endif %}
+  </div>
+</article>

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Live arrival claim — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap" style="max-width:720px">
+  <header class="page-header">
+    <div class="breadcrumbs"><a href="{% url 'shop:order_detail' order.number %}">{{ order.number }}</a> / <span>Live arrival claim</span></div>
+    <h1>{{ site.guarantee_headline }} claim</h1>
+    <p class="muted">
+      File within 8 hours of delivery{% if order.doa_window_closes_at %} (by {{ order.doa_window_closes_at|date:"g:i a, M j" }}){% endif %}.
+      Photograph the animal in the unopened bag it arrived in — that photo is what we need to approve a credit.
+    </p>
+  </header>
+  <form method="post" enctype="multipart/form-data" class="panel" style="margin-bottom:4rem">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="field full">
+        <label for="{{ form.items_affected.id_for_label }}">Which animals?</label>
+        {{ form.items_affected }}
+        <span class="helptext">{{ form.items_affected.help_text }}</span>{{ form.items_affected.errors }}
+      </div>
+      <div class="field full">
+        <label for="{{ form.details.id_for_label }}">What happened?</label>
+        {{ form.details }}
+        <span class="helptext">{{ form.details.help_text }}</span>{{ form.details.errors }}
+      </div>
+      <div class="field full">
+        <label for="{{ form.photo.id_for_label }}">Photo in the bag</label>
+        {{ form.photo }}{{ form.photo.errors }}
+      </div>
+    </div>
+    <button class="btn btn-coral btn-block" type="submit" style="margin-top:1rem">Submit claim</button>
+  </form>
+</div>
+{% endblock %}

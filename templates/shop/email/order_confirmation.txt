@@ -1,0 +1,21 @@
+{{ site.store_name }} — order {{ order.number }}
+
+Thanks {{ order.first_name }}, we have your order.
+
+{% for item in order.items.all %}  {{ item.quantity }} x {{ item.name }} — ${{ item.line_total }}
+{% endfor %}
+Subtotal: ${{ order.subtotal }}
+Shipping: ${{ order.shipping_total }}
+{% if order.tax_total %}Tax: ${{ order.tax_total }}
+{% endif %}Total: ${{ order.grand_total }}
+
+Shipping to:
+{{ order.customer_name }}
+{% for line in order.shipping_address_lines %}{{ line }}
+{% endfor %}
+{% if order.contains_livestock %}Livestock ships overnight {{ site.shipping_days }}.{% if order.requested_ship_date %} You requested {{ order.requested_ship_date|date:"l, F j" }}.{% endif %}
+{% if order.hold_for_weather %}We will hold your box if temperatures are unsafe.
+{% endif %}
+{{ site.guarantee_headline }}: {{ site.guarantee_blurb }}
+{% endif %}
+Questions? Reply to this email or write {{ site.contact_email }}.

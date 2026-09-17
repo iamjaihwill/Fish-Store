@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Contact — {{ site.store_name }}{% endblock %}
+{% block content %}
+<div class="wrap">
+  <header class="page-header">
+    <h1>Talk to us</h1>
+    <p class="muted">Livestock questions get answered by the people who acclimate the animals.</p>
+  </header>
+  <div class="cart-layout" style="margin-bottom:4rem">
+    <form method="post" class="panel">
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field">{{ form.name.label_tag }}{{ form.name }}{{ form.name.errors }}</div>
+        <div class="field">{{ form.email.label_tag }}{{ form.email }}{{ form.email.errors }}</div>
+        <div class="field">{{ form.order_reference.label_tag }}{{ form.order_reference }}</div>
+        <div class="field">{{ form.subject.label_tag }}{{ form.subject }}</div>
+        <div class="field full">{{ form.message.label_tag }}{{ form.message }}{{ form.message.errors }}</div>
+      </div>
+      <button class="btn btn-primary" type="submit" style="margin-top:1rem">Send message</button>
+    </form>
+    <aside class="summary">
+      <h2 style="font-size:1.05rem">{{ site.store_name }}</h2>
+      {% if site.address %}<p class="small muted">{{ site.address|linebreaksbr }}</p>{% endif %}
+      {% if site.hours %}<p class="small"><strong>Hours</strong><br>{{ site.hours }}</p>{% endif %}
+      {% if site.contact_phone %}<p class="small"><strong>Phone</strong><br>{{ site.contact_phone }}</p>{% endif %}
+      <p class="small"><strong>Email</strong><br>{{ site.contact_email }}</p>
+      <p class="small muted">Livestock ships {{ site.shipping_days }}.</p>
+    </aside>
+  </div>
+</div>
+{% endblock %}

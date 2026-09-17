@@ -1,0 +1,76 @@
+{% with status=order.status %}
+<div class="status-track">
+  <div class="status-step {% if status != 'cancelled' %}done{% endif %}">Received</div>
+  <div class="status-step {% if status == 'paid' or status == 'packing' or status == 'shipped' or status == 'delivered' %}done{% endif %}">Paid</div>
+  <div class="status-step {% if status == 'packing' or status == 'shipped' or status == 'delivered' %}done{% endif %}">Packing</div>
+  <div class="status-step {% if status == 'shipped' or status == 'delivered' %}done{% endif %}">Shipped</div>
+  <div class="status-step {% if status == 'delivered' %}done{% endif %}">Delivered</div>
+</div>
+{% endwith %}
+
+<div class="cart-layout">
+  <div>
+    <section class="panel">
+      <h2 style="font-size:1.05rem">Items</h2>
+      {% for item in order.items.all %}
+      <div class="summary-row">
+        <span>
+          {{ item.quantity }} × {{ item.name }}
+          {% if item.is_wysiwyg %}<span class="chip">WYSIWYG</span>{% endif %}
+        </span>
+        <span>${{ item.line_total }}</span>
+      </div>
+      {% endfor %}
+      <div class="summary-row" style="border-top:1px solid var(--line);margin-top:.5rem;padding-top:.7rem"><span>Subtotal</span><span>${{ order.subtotal }}</span></div>
+      <div class="summary-row"><span>Shipping</span><span>{% if order.shipping_total %}${{ order.shipping_total }}{% else %}Free{% endif %}</span></div>
+      {% if order.tax_total %}<div class="summary-row"><span>Tax</span><span>${{ order.tax_total }}</span></div>{% endif %}
+      <div class="summary-row summary-total"><span>Total</span><span>${{ order.grand_total }}</span></div>
+    </section>
+
+    {% if order.contains_livestock %}
+    <section class="panel">
+      <h2 style="font-size:1.05rem">Your livestock delivery</h2>
+      <p class="muted small">
+        Livestock leaves the facility {{ site.shipping_days }} by overnight service.
+        {% if order.requested_ship_date %}You asked for a {{ order.requested_ship_date|date:"l, F j" }} departure.{% endif %}
+        {% if order.hold_for_weather %} We'll hold the box if temperatures are unsafe at either end.{% endif %}
+      </p>
+      <p class="muted small">
+        {{ site.guarantee_headline }}: {{ site.guarantee_blurb }}
+      </p>
+      {% if order.doa_window_open %}
+      <a class="btn btn-coral" href="{% url 'shop:doa_claim' order.number %}">File a live arrival claim</a>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if order.doa_claims.all %}
+    <section class="panel">
+      <h2 style="font-size:1.05rem">Claims</h2>
+      {% for claim in order.doa_claims.all %}
+      <div class="summary-row">
+        <span>{{ claim.created_at|date:"M j" }} — {{ claim.items_affected }}</span>
+        <span class="chip">{{ claim.get_status_display }}</span>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="summary">
+    <h2 style="font-size:1.05rem">Shipping to</h2>
+    <p class="small">
+      {{ order.customer_name }}<br>
+      {% for line in order.shipping_address_lines %}{{ line }}<br>{% endfor %}
+      {{ order.phone }}
+    </p>
+    <div class="summary-row"><span>Status</span><span>{{ order.get_status_display }}</span></div>
+    <div class="summary-row"><span>Placed</span><span>{{ order.created_at|date:"M j, Y" }}</span></div>
+    {% if order.tracking_number %}
+    <div class="summary-row"><span>{{ order.carrier|default:"Tracking" }}</span><span>{{ order.tracking_number }}</span></div>
+    {% endif %}
+    {% if order.customer_notes %}
+    <p class="small muted" style="margin-top:1rem"><strong>Your note:</strong> {{ order.customer_notes }}</p>
+    {% endif %}
+  </aside>
+</div>

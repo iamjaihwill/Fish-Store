@@ -1,0 +1,49 @@
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <p class="footer-name">{{ site.store_name }}</p>
+      <p class="muted">{{ site.tagline }}</p>
+      {% if site.social_links %}
+      <ul class="social">
+        {% for label, url in site.social_links %}<li><a href="{{ url }}">{{ label }}</a></li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+
+    <div>
+      <h3>Shop</h3>
+      <ul>
+        {% for category in nav_categories %}<li><a href="{{ category.get_absolute_url }}">{{ category.name }}</a></li>{% endfor %}
+        {% for link in footer_shop_links %}<li><a href="{{ link.href }}">{{ link.label }}</a></li>{% endfor %}
+      </ul>
+    </div>
+
+    <div>
+      <h3>Support</h3>
+      <ul>
+        {% for page in footer_pages %}<li><a href="{{ page.get_absolute_url }}">{{ page.title }}</a></li>{% endfor %}
+        {% for link in footer_support_links %}<li><a href="{{ link.href }}">{{ link.label }}</a></li>{% endfor %}
+        <li><a href="{% url 'cms:faq' %}">FAQ</a></li>
+        <li><a href="{% url 'shop:order_lookup' %}">Track an order</a></li>
+        <li><a href="{% url 'cms:contact' %}">Contact</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-newsletter">
+      <h3>Drop alerts</h3>
+      <p class="muted">New frags and live sale dates, no spam.</p>
+      <form method="post" action="{% url 'cms:newsletter' %}" class="newsletter-form">
+        {% csrf_token %}
+        <input type="email" name="email" required placeholder="you@example.com" aria-label="Email address">
+        <button class="btn btn-primary" type="submit">Join</button>
+      </form>
+      {% if site.contact_email %}<p class="muted small">{{ site.contact_email }}</p>{% endif %}
+      {% if site.hours %}<p class="muted small">{{ site.hours }}</p>{% endif %}
+    </div>
+  </div>
+  <div class="wrap footer-base">
+    <p class="muted small">&copy; {% now "Y" %} {{ site.store_name }}. {{ site.footer_note }}</p>
+    <p class="muted small">Livestock ships {{ site.shipping_days }}.</p>
+  </div>
+</footer>

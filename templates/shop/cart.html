@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Your cart — {{ site.store_name }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <header class="page-header"><h1>Your cart</h1></header>
+
+  {% if cart.is_empty %}
+    <div class="empty-state">
+      <h2>Your cart is empty</h2>
+      <p class="muted">Corals move fast around here. Go find something that glows.</p>
+      <a class="btn btn-primary" href="{% url 'catalog:shop' %}">Shop the reef</a>
+    </div>
+  {% else %}
+  <div class="cart-layout">
+    <div class="line-items">
+      {% for line in cart %}
+      <div class="line-item">
+        {% with image=line.product.primary_image %}
+        <a href="{{ line.product.get_absolute_url }}">
+          <img src="{% if image %}{{ image.image.url }}{% else %}{% static 'img/placeholder.svg' %}{% endif %}" alt="{{ line.product.name }}">
+        </a>
+        {% endwith %}
+        <div>
+          <h3 class="card-title"><a href="{{ line.product.get_absolute_url }}">{{ line.product.name }}</a></h3>
+          <p class="muted small" style="margin:.2rem 0">
+            ${{ line.unit_price }} each
+            {% if line.product.is_wysiwyg %} · one of one{% endif %}
+            {% if line.product.is_livestock %} · overnight{% endif %}
+          </p>
+          {% if line.over_stock %}
+          <p class="stock-note">Only {{ line.available_quantity }} available — update the quantity to continue.</p>
+          {% endif %}
+        </div>
+        <div class="li-actions">
+          <form method="post" action="{% url 'shop:update_cart' line.product.slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'shop:cart' %}">
+            <input type="number" name="quantity" value="{{ line.quantity }}" min="0"
+                   max="{{ line.product.max_orderable }}" aria-label="Quantity for {{ line.product.name }}"
+                   {% if line.product.is_wysiwyg %}readonly{% endif %}>
+            <button class="btn btn-ghost small" type="submit">Update</button>
+          </form>
+          <strong>${{ line.line_total }}</strong>
+          <form method="post" action="{% url 'shop:remove_from_cart' line.product.slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'shop:cart' %}">
+            <button class="btn btn-ghost small" type="submit" aria-label="Remove {{ line.product.name }}">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <aside class="summary">
+      <h2 style="font-size:1.15rem">Order summary</h2>
+      {% if cart.amount_to_free_shipping %}
+      <p class="small muted">Add ${{ cart.amount_to_free_shipping }} for free overnight shipping.</p>
+      <div class="progress"><span style="width:{% widthratio cart.subtotal site.free_shipping_threshold 100 %}%"></span></div>
+      {% elif cart.subtotal %}
+      <p class="small" style="color:var(--teal)">Free shipping unlocked.</p>
+      {% endif %}
+
+      <div class="summary-row"><span>Subtotal</span><span>${{ cart.subtotal }}</span></div>
+      <div class="summary-row">
+        <span>Shipping{% if cart.contains_livestock %} (overnight){% endif %}</span>
+        <span>{% if cart.shipping_total %}${{ cart.shipping_total }}{% else %}Free{% endif %}</span>
+      </div>
+      {% if cart.tax_total %}<div class="summary-row"><span>Tax</span><span>${{ cart.tax_total }}</span></div>{% endif %}
+      <div class="summary-row summary-total"><span>Total</span><span>${{ cart.grand_total }}</span></div>
+
+      {% if problems %}
+      <p class="flash flash-warning small" style="margin:1rem 0 0">Some items exceed available stock. Adjust them to check out.</p>
+      {% else %}
+      <a class="btn btn-primary btn-block" href="{% url 'shop:checkout' %}" style="margin-top:1rem">Checkout</a>
+      {% endif %}
+      <p class="center small muted" style="margin:.8rem 0 0"><a href="{% url 'catalog:shop' %}">Keep shopping</a></p>
+
+      {% if cart.contains_livestock %}
+      <p class="small muted" style="margin-top:1rem">
+        This order contains livestock and ships overnight {{ site.shipping_days }}.
+        You'll pick a delivery day at checkout.
+      </p>
+      {% endif %}
+    </aside>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

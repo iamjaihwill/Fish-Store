@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ site.store_name }} — {{ site.tagline }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  {% if slides %}
+  <section class="hero">
+    {% for slide in slides|slice:":1" %}
+    <div class="hero-slide">
+      {% if slide.image %}<img class="hero-bg" src="{{ slide.image.url }}" alt="">{% endif %}
+      <div class="hero-copy">
+        {% if slide.eyebrow %}<span class="eyebrow">{{ slide.eyebrow }}</span>{% endif %}
+        <h1>{{ slide.headline }}</h1>
+        {% if slide.subhead %}<p>{{ slide.subhead }}</p>{% endif %}
+        <div class="hero-actions">
+          {% if slide.cta_label %}<a class="btn btn-primary" href="{{ slide.cta_url }}">{{ slide.cta_label }}</a>{% endif %}
+          {% if slide.secondary_cta_label %}<a class="btn btn-ghost" href="{{ slide.secondary_cta_url }}">{{ slide.secondary_cta_label }}</a>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if live_sale %}
+  <section class="section">
+    <div class="event-card">
+      {% if live_sale.image %}<img src="{{ live_sale.image.url }}" alt="">{% endif %}
+      <div class="event-body">
+        <span class="eyebrow">{% if live_sale.is_running %}Live now{% else %}Next live sale{% endif %}</span>
+        <h2>{{ live_sale.title }}</h2>
+        <p class="muted">{{ live_sale.description|truncatewords:40 }}</p>
+        {% if live_sale.is_upcoming %}
+        <div class="countdown" data-countdown="{{ live_sale.starts_at|date:'c' }}">
+          <div><b data-unit="days">–</b><span>days</span></div>
+          <div><b data-unit="hours">–</b><span>hrs</span></div>
+          <div><b data-unit="minutes">–</b><span>min</span></div>
+          <div><b data-unit="seconds">–</b><span>sec</span></div>
+        </div>
+        {% endif %}
+        <div class="hero-actions">
+          {% if live_sale.stream_url %}<a class="btn btn-coral" href="{{ live_sale.stream_url }}">Watch the stream</a>{% endif %}
+          {% if live_sale.collection %}<a class="btn btn-ghost" href="{{ live_sale.collection.get_absolute_url }}">Shop the drop</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% for block in sections %}
+    {% with section=block.section %}
+    {% if section.kind == "guarantee" %}
+      <section class="trust-bar">
+        <div class="trust-item">
+          <h3>{{ site.guarantee_headline }}</h3>
+          <p>{{ site.guarantee_blurb }}</p>
+        </div>
+        <div class="trust-item">
+          <h3>Overnight only</h3>
+          <p>Livestock leaves {{ site.shipping_days }} in insulated boxes with heat or cool packs.</p>
+        </div>
+        <div class="trust-item">
+          <h3>Quarantined &amp; settled</h3>
+          <p>Every animal is observed and eating before it is listed for sale.</p>
+        </div>
+        <div class="trust-item">
+          <h3>Free shipping {% if site.free_shipping_threshold %}over ${{ site.free_shipping_threshold|floatformat:0 }}{% endif %}</h3>
+          <p>Flat ${{ site.livestock_shipping_rate|floatformat:0 }} overnight on everything below that.</p>
+        </div>
+      </section>
+
+    {% elif section.kind == "category_grid" %}
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>{{ section.heading|default:"Shop by category" }}</h2>
+            {% if section.subheading %}<p>{{ section.subheading }}</p>{% endif %}
+          </div>
+        </div>
+        <div class="category-grid">
+          {% for category in block.categories %}
+          <a class="category-card" href="{{ category.get_absolute_url }}">
+            {% if category.image %}<img src="{{ category.image.url }}" alt="" loading="lazy">{% endif %}
+            <span>{{ category.name }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+
+    {% elif section.kind == "rich_text" %}
+      <section class="section">
+        <div class="rich-band">
+          {% if section.heading %}<h2>{{ section.heading }}</h2>{% endif %}
+          {% if section.subheading %}<p class="muted">{{ section.subheading }}</p>{% endif %}
+          <div class="prose">{{ section.body_html }}</div>
+          {% if section.cta_label %}<a class="btn btn-primary" href="{{ section.cta_url }}">{{ section.cta_label }}</a>{% endif %}
+        </div>
+      </section>
+
+    {% elif section.kind == "testimonials" %}
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>{{ section.heading|default:"From the reefkeepers" }}</h2>
+            {% if section.subheading %}<p>{{ section.subheading }}</p>{% endif %}
+          </div>
+        </div>
+        <div class="testimonials">
+          {% for t in block.testimonials %}
+          <blockquote class="testimonial">
+            <div class="stars">{% for _ in t.stars %}★{% endfor %}</div>
+            <p>{{ t.quote }}</p>
+            <footer class="muted small">{{ t.author }}{% if t.location %} · {{ t.location }}{% endif %}</footer>
+          </blockquote>
+          {% endfor %}
+        </div>
+      </section>
+
+    {% elif block.products %}
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <h2>{{ section.heading|default:section.get_kind_display }}</h2>
+            {% if section.subheading %}<p>{{ section.subheading }}</p>{% endif %}
+          </div>
+          {% if section.cta_label %}<a class="btn btn-ghost" href="{{ section.cta_url }}">{{ section.cta_label }}</a>{% endif %}
+        </div>
+        <div class="product-grid">
+          {% for product in block.products %}{% include "partials/product_card.html" %}{% endfor %}
+        </div>
+      </section>
+    {% endif %}
+    {% endwith %}
+  {% endfor %}
+</div>
+{% endblock %}
