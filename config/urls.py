@@ -18,6 +18,7 @@ urlpatterns = [
     path("robots.txt", robots_txt, name="robots"),
     path("account/", include("apps.accounts.urls")),
     path("", include("apps.payments.urls")),
+    path("", include("apps.notifications.urls")),
     path("", include("apps.shop.urls")),
     path("", include("apps.catalog.urls")),
     path("", include("apps.reviews.urls")),

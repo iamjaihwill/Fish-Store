@@ -5,12 +5,10 @@ Run on a schedule (cron, Celery beat, systemd timer):
     manage.py send_restock_alerts
 """
 
-from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
-from django.template.loader import render_to_string
 
 from apps.accounts.models import WishlistItem
-from apps.cms.models import SiteSettings
+from apps.notifications.senders import send_back_in_stock
 
 
 class Command(BaseCommand):
@@ -24,7 +22,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        site = SiteSettings.load()
         dry_run = options["dry_run"]
 
         candidates = (
@@ -46,17 +43,7 @@ class Command(BaseCommand):
                 sent += 1
                 continue
 
-            body = render_to_string(
-                "catalog/email/back_in_stock.txt",
-                {"item": item, "product": product, "site": site},
-            )
-            send_mail(
-                subject=f"Back in stock: {product.name}",
-                message=body,
-                from_email=None,
-                recipient_list=[item.customer.email],
-                fail_silently=True,
-            )
+            send_back_in_stock(item)
             item.mark_notified()
             sent += 1
 

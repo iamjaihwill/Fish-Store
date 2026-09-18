@@ -236,6 +236,17 @@ class Order(models.Model):
         self.save(update_fields=["status", "updated_at"])
         return self
 
+    def mark_delivered(self):
+        """Record delivery, which opens the 8 hour live arrival window."""
+        self.status = self.Status.DELIVERED
+        self.delivered_at = self.delivered_at or timezone.now()
+        self.save(update_fields=["status", "delivered_at", "updated_at"])
+
+        from apps.notifications.senders import send_order_delivered
+
+        send_order_delivered(self)
+        return self
+
     @property
     def is_paid(self):
         return self.status not in {self.Status.PENDING, self.Status.CANCELLED}
@@ -266,6 +277,11 @@ class Order(models.Model):
                 "updated_at",
             ]
         )
+
+        from apps.notifications.senders import send_order_shipped
+
+        send_order_shipped(self)
+        return self
 
     def restock(self):
         """Return reserved inventory to the catalog (cancellations/refunds)."""

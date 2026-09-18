@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.reviews",
     "apps.rewards",
     "apps.payments",
+    "apps.notifications",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -149,6 +150,14 @@ STRIPE_SECRET_KEY = env("DJANGO_STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = env("DJANGO_STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = env("DJANGO_STRIPE_WEBHOOK_SECRET", "")
 PAYMENT_BACKEND_CONFIG = {}
+
+# Absolute base for links inside emails, e.g. https://reefandrift.example
+SITE_BASE_URL = env("DJANGO_SITE_BASE_URL", "")
+
+# Abandoned cart reminders: how long to wait, and how many to send at most.
+ABANDONED_CART_DELAY_HOURS = int(env("DJANGO_ABANDONED_CART_DELAY_HOURS", "6"))
+ABANDONED_CART_MAX_REMINDERS = int(env("DJANGO_ABANDONED_CART_MAX_REMINDERS", "2"))
+REVIEW_REQUEST_DELAY_DAYS = int(env("DJANGO_REVIEW_REQUEST_DELAY_DAYS", "14"))
 
 # Analytics. Left blank, no snippet is emitted at all.
 ANALYTICS_ID = env("DJANGO_ANALYTICS_ID", "")

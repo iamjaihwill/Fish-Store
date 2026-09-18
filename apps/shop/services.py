@@ -2,10 +2,7 @@
 
 from decimal import Decimal
 
-from django.core.mail import send_mail
 from django.db import models, transaction
-from django.template.loader import render_to_string
-
 from apps.catalog.models import Product, ProductVariant
 from apps.cms.models import SiteSettings
 from apps.rewards.models import (
@@ -157,6 +154,11 @@ def place_order(cart, details, customer=None, credits=None):
     # Points are earned on what the customer actually spent on merchandise.
     award_points(customer, order, settings_obj=RewardsSettings.load())
 
+    # A completed purchase closes any recovery email we were about to send.
+    from apps.notifications.services import mark_carts_recovered
+
+    mark_carts_recovered(order)
+
     cart.clear()
     if credits is not None:
         credits.clear()
@@ -164,14 +166,7 @@ def place_order(cart, details, customer=None, credits=None):
 
 
 def send_order_confirmation(order):
-    """Email the customer their receipt. Console backend in development."""
-    settings_obj = SiteSettings.load()
-    context = {"order": order, "site": settings_obj}
-    body = render_to_string("shop/email/order_confirmation.txt", context)
-    send_mail(
-        subject=f"{settings_obj.store_name} order {order.number}",
-        message=body,
-        from_email=None,
-        recipient_list=[order.email],
-        fail_silently=True,
-    )
+    """Email the customer their receipt, using the staff-editable template."""
+    from apps.notifications.senders import send_order_confirmation as _send
+
+    return _send(order)

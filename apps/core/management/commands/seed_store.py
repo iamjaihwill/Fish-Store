@@ -189,6 +189,7 @@ class Command(BaseCommand):
         self.seed_collections(products)
         self.seed_content()
         self.seed_articles()
+        self.seed_email_templates()
         self.seed_admin(options["admin_password"])
 
         self.stdout.write(self.style.SUCCESS(
@@ -786,6 +787,14 @@ class Command(BaseCommand):
                 defaults={"quote": quote, "location": location,
                           "rating": rating, "sort_order": order},
             )
+
+    def seed_email_templates(self):
+        """Write the built-in emails into the database so staff can edit them."""
+        from apps.notifications.models import EmailTemplate
+
+        created = EmailTemplate.seed_defaults()
+        if created:
+            self.stdout.write(f"Added {created} editable email templates.")
 
     def seed_admin(self, password):
         if not password:

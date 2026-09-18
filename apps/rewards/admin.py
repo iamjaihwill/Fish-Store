@@ -67,12 +67,31 @@ class GiftCardAdmin(admin.ModelAdmin):
     autocomplete_fields = ["issued_to", "purchased_with_order"]
     readonly_fields = ("code", "created_at")
     inlines = [GiftCardTransactionInline]
-    actions = ["deactivate"]
+    actions = ["email_card", "deactivate"]
 
     @admin.display(description="Balance", ordering="balance")
     def balance_tag(self, obj):
         color = "#2a8" if obj.balance > 0 else "#777"
         return format_html('<b style="color:{}">${}</b>', color, obj.balance)
+
+    @admin.action(description="Email the code to the recipient")
+    def email_card(self, request, queryset):
+        from apps.notifications.senders import send_gift_card
+
+        sent = skipped = 0
+        for card in queryset:
+            if send_gift_card(card) is not None:
+                sent += 1
+            else:
+                skipped += 1
+        if sent:
+            self.message_user(request, f"Emailed {sent} gift cards.", messages.SUCCESS)
+        if skipped:
+            self.message_user(
+                request,
+                f"{skipped} cards had no recipient email or were already sent.",
+                messages.WARNING,
+            )
 
     @admin.action(description="Deactivate selected gift cards")
     def deactivate(self, request, queryset):

@@ -144,10 +144,13 @@ class OrderAdmin(admin.ModelAdmin):
 
     @admin.action(description="Mark as delivered (opens the DOA window)")
     def mark_delivered(self, request, queryset):
-        updated = queryset.update(
-            status=Order.Status.DELIVERED, delivered_at=timezone.now()
+        count = 0
+        for order in queryset:
+            order.mark_delivered()
+            count += 1
+        self.message_user(
+            request, f"{count} orders marked delivered and the customers notified."
         )
-        self.message_user(request, f"{updated} orders marked delivered.")
 
     @admin.action(description="Cancel and return stock to the catalog")
     def cancel_and_restock(self, request, queryset):
@@ -185,16 +188,23 @@ class DoaClaimAdmin(admin.ModelAdmin):
             '<img src="{}" style="max-width:360px;border-radius:10px" />', obj.photo.url
         )
 
-    @admin.action(description="Approve claim")
-    def approve(self, request, queryset):
-        updated = queryset.update(
-            status=DoaClaim.Status.APPROVED, resolved_at=timezone.now()
-        )
-        self.message_user(request, f"Approved {updated} claims.", messages.SUCCESS)
+    def _resolve(self, request, queryset, status, verb):
+        from apps.notifications.senders import send_doa_resolved
 
-    @admin.action(description="Deny claim")
+        count = 0
+        for claim in queryset:
+            claim.status = status
+            claim.resolved_at = timezone.now()
+            claim.save(update_fields=["status", "resolved_at"])
+            send_doa_resolved(claim)
+            count += 1
+        self.message_user(request, f"{verb} {count} claims and emailed the customers.")
+        return count
+
+    @admin.action(description="Approve claim and email the customer")
+    def approve(self, request, queryset):
+        self._resolve(request, queryset, DoaClaim.Status.APPROVED, "Approved")
+
+    @admin.action(description="Deny claim and email the customer")
     def deny(self, request, queryset):
-        updated = queryset.update(
-            status=DoaClaim.Status.DENIED, resolved_at=timezone.now()
-        )
-        self.message_user(request, f"Denied {updated} claims.")
+        self._resolve(request, queryset, DoaClaim.Status.DENIED, "Denied")

@@ -54,6 +54,15 @@ Stripe when configured.
 with price, availability and aggregate rating, Open Graph tags, and instant search
 suggestions in the header.
 
+**Email.** Twelve transactional emails — welcome, order confirmation, payment receipt,
+shipping with tracking, delivery opening the DOA window, claim acknowledgement and outcome,
+review request, back-in-stock, points expiry, gift card, abandoned cart — all editable by
+staff in the admin, all deduplicated so a retry cannot email a customer twice.
+
+**Abandoned carts.** A cart held against a known email is stored and can be recovered from
+a one-click link that rebuilds the session cart. Reminders are staged and capped, and a
+completed purchase closes the cart out so nobody is chased after they have already bought.
+
 ## Livestock-specific behaviour
 
 This is the part that separates a coral store from ordinary retail, and it is modelled
@@ -106,6 +115,9 @@ Everything below is editable in the admin without touching code or redeploying:
 | **Payments** | Charge records, off-site payment recording, provider refunds |
 | **Customers** | Profiles, addresses, wholesale approval |
 | **Care guides** | Blog articles with SEO fields and related products |
+| **Email templates** | Every transactional email's subject and body, with an on/off switch and a reset-to-default action |
+| **Email log** | Read-only record of what was sent to whom, and why a send was skipped |
+| **Abandoned carts** | Open and recovered carts, with a send-a-reminder-now action |
 
 Rich text fields accept either plain text (blank lines become paragraphs, everything is
 escaped) or authored HTML — copy that *begins* with a block-level tag is passed through as
@@ -125,6 +137,7 @@ apps/
   reviews/         Moderated reviews with verified-purchase detection
   rewards/         Points ledger, gift cards, discount codes
   payments/        Backend contract, invoice/credit/Stripe backends, webhooks
+  notifications/   Editable email templates, send log, abandoned carts, recovery
 templates/         storefront templates (base, partials, per-app)
 static/css/        one hand-written stylesheet
 static/js/         progressive enhancement only — every feature works without it
@@ -143,19 +156,26 @@ on the discounted goods, then points, then gift cards — which behave like mone
 shipping and tax as well as goods. All of it lives in `apps/shop/pricing.py`, so there is
 exactly one place where an order total is decided.
 
+**Email is deduplicated at the send, not the caller.** Every send carries a dedupe key, so
+a retried webhook, a re-run cron job or a double-clicked admin action cannot email a
+customer twice. Shipping notices key on the tracking number, so correcting a wrong number
+does send a fresh notice — the one case where repeating yourself is correct.
+
 ## Tests
 
 ```
 .venv/bin/python manage.py test
 ```
 
-287 tests covering catalog filtering and publication rules, WYSIWYG quantity enforcement,
+340 tests covering catalog filtering and publication rules, WYSIWYG quantity enforcement,
 variant stock and cart separation, cart arithmetic and stock clamping, shipping and tax
 quoting, the checkout race condition, order privacy, account registration and guest-order
 claiming, wishlist and restock alerts, review moderation and verified purchases, points
 expiry and redemption limits, gift card overdraw and splitting, the payment webhook path
 including forged and replayed signatures, the shipping cutoff calendar, order additions,
-wholesale pricing, CMS rendering, SEO output, the admin bulk actions, and the seed command.
+wholesale pricing, CMS rendering, SEO output, email template resolution and deduplication,
+abandoned cart capture, staged reminders and recovery, the admin bulk actions, and the seed
+command.
 
 ## Seeding
 
@@ -193,8 +213,19 @@ against live Stripe credentials, so verify it in test mode before taking real mo
 **Analytics** emit nothing unless `DJANGO_ANALYTICS_ID` is set. Plausible, Fathom and GA4
 are supported.
 
-**Scheduled work:** run `manage.py send_restock_alerts` on a timer (cron, systemd, Celery
-beat) to email wishlist holders when sold-out products return.
+**Scheduled work.** Four commands are meant to run on a timer (cron, systemd, Celery beat).
+All four take `--dry-run`:
+
+| Command | Suggested schedule | What it does |
+| --- | --- | --- |
+| `send_restock_alerts` | every 15 min | Emails wishlist holders when a sold-out product returns |
+| `send_abandoned_cart_emails` | hourly | Staged reminders for carts left behind |
+| `send_review_requests` | daily | Asks for a review ~14 days after delivery |
+| `send_points_expiry_reminders` | daily | Warns before reward points expire |
+
+**Set `DJANGO_SITE_BASE_URL`** to the storefront's public origin. Without it, links inside
+emails are relative paths and will not work in a mail client — `manage.py check` refuses to
+stay quiet about this once `DEBUG` is off.
 
 SQLite is fine for a store this size. If you outgrow it, `DATABASES` is the only thing that
 needs to change.

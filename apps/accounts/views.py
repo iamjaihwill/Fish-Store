@@ -34,6 +34,10 @@ def register(request):
             user = form.save()
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             claimed = user.customer.claim_guest_orders()
+
+            from apps.notifications.senders import send_welcome
+
+            send_welcome(user.customer, claimed)
             if claimed:
                 messages.success(
                     request,

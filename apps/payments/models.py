@@ -69,6 +69,10 @@ class Payment(models.Model):
             self.raw_response = raw
         self.save(update_fields=["status", "reference", "paid_at", "raw_response"])
         self.order.mark_paid()
+
+        from apps.notifications.senders import send_payment_received
+
+        send_payment_received(self)
         return self
 
     def mark_failed(self, message="", raw=None):

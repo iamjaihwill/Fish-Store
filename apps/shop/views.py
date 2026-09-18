@@ -101,6 +101,9 @@ def remove_from_cart(request, slug):
 
 def cart_detail(request):
     cart = Cart(request)
+    from apps.notifications.services import capture_cart
+
+    capture_cart(request, cart)
     return render(
         request,
         "shop/cart.html",
@@ -138,6 +141,12 @@ def checkout(request):
 
     credits = AppliedCredits(request)
     live_sale_running = _live_sale_running()
+
+    # Reaching checkout with an identifiable email is the strongest abandoned
+    # cart signal there is.
+    from apps.notifications.services import capture_cart
+
+    capture_cart(request, cart, email=request.POST.get("email", ""), customer=customer)
     totals = quote(
         cart.subtotal,
         contains_livestock=cart.contains_livestock,
@@ -256,6 +265,10 @@ def doa_claim(request, number):
             claim = form.save(commit=False)
             claim.order = order
             claim.save()
+
+            from apps.notifications.senders import send_doa_received
+
+            send_doa_received(claim)
             messages.success(
                 request,
                 "Claim received. Our livestock team reviews claims the same day.",
